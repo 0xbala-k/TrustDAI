@@ -30,7 +30,10 @@ export class TokenContract {
     if (!window.ethereum) {
       throw new Error('MetaMask is not installed');
     }
-    return await window.ethereum.request({ method: 'eth_requestAccounts' });
+    // Always request accounts to force the MetaMask popup
+    return await window.ethereum.request({ 
+      method: 'eth_requestAccounts'
+    });
   }
 
   async connect() {
@@ -39,8 +42,11 @@ export class TokenContract {
   }
 
   async disconnect() {
-    // We don't actually disconnect from MetaMask here,
-    // we just clean up our event listeners
+    // Clear any cached connections
+    if (window.ethereum && window.ethereum.removeAllListeners) {
+      window.ethereum.removeAllListeners('accountsChanged');
+    }
+    this.contract = null;
   }
 
   async getTokenData() {
