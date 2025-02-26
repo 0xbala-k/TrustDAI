@@ -86,6 +86,7 @@ const Index = () => {
   const handleDisconnect = async () => {
     await tokenContract.disconnect();
     setAccount(null);
+    window.ethereum.removeListener('accountsChanged', handleAccountsChanged);
     toast({
       title: "Wallet Disconnected",
       description: "Successfully disconnected from MetaMask",

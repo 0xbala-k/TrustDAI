@@ -17,10 +17,11 @@ export class TokenContract {
 
   private async initializeContract() {
     if (!this.contract) {
+      const signer = await this.provider.getSigner();
       this.contract = new ethers.Contract(
         tokenAddress,
         TokenArtifact.abi,
-        this.provider
+        signer
       );
     }
     return this.contract;
@@ -30,7 +31,11 @@ export class TokenContract {
     if (!window.ethereum) {
       throw new Error('MetaMask is not installed');
     }
-    // Always request accounts to force the MetaMask popup
+    // Force MetaMask to show the account selection popup
+    await window.ethereum.request({
+      method: 'wallet_requestPermissions',
+      params: [{ eth_accounts: {} }],
+    });
     return await window.ethereum.request({ 
       method: 'eth_requestAccounts'
     });
@@ -42,10 +47,6 @@ export class TokenContract {
   }
 
   async disconnect() {
-    // Clear any cached connections by removing event listeners
-    if (window.ethereum) {
-      window.ethereum.removeListener('accountsChanged', () => {});
-    }
     this.contract = null;
   }
 
