@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { tokenContract } from '../services/TokenContract';
@@ -116,26 +117,33 @@ const Index = () => {
 
   return (
     <div className="container max-w-2xl mx-auto p-6 space-y-8">
-      <div className="flex justify-end">
-        {!account ? (
-          <Button
-            variant="outline"
-            onClick={handleConnect}
-            className="glass"
-          >
-            <Wallet className="mr-2 h-4 w-4" />
-            Connect Wallet
-          </Button>
-        ) : (
-          <Button
-            variant="outline"
-            onClick={handleDisconnect}
-            className="glass"
-          >
-            <Power className="mr-2 h-4 w-4" />
-            Disconnect
-          </Button>
+      <div className="flex justify-between items-center">
+        {account && (
+          <p className="text-sm text-muted-foreground font-mono">
+            Connected: {account.slice(0, 6)}...{account.slice(-4)}
+          </p>
         )}
+        <div>
+          {!account ? (
+            <Button
+              variant="outline"
+              onClick={handleConnect}
+              className="glass"
+            >
+              <Wallet className="mr-2 h-4 w-4" />
+              Connect Wallet
+            </Button>
+          ) : (
+            <Button
+              variant="outline"
+              onClick={handleDisconnect}
+              className="glass"
+            >
+              <Power className="mr-2 h-4 w-4" />
+              Disconnect
+            </Button>
+          )}
+        </div>
       </div>
 
       <Card className="glass animate-fadeIn">
