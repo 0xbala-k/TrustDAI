@@ -9,7 +9,7 @@ export class TokenContract {
   private contract: ethers.Contract | null = null;
 
   constructor() {
-    if (typeof window.ethereum === 'undefined') {
+    if (typeof window === 'undefined' || !window.ethereum) {
       throw new Error('MetaMask is not installed');
     }
     this.provider = new ethers.BrowserProvider(window.ethereum);
@@ -27,6 +27,9 @@ export class TokenContract {
   }
 
   async requestAccount() {
+    if (!window.ethereum) {
+      throw new Error('MetaMask is not installed');
+    }
     return await window.ethereum.request({ method: 'eth_requestAccounts' });
   }
 
