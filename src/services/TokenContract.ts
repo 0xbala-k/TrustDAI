@@ -27,22 +27,26 @@ export class TokenContract {
     return this.contract;
   }
 
-  async requestAccount() {
+  async requestAccount(forceSelection: boolean = false) {
     if (!window.ethereum) {
       throw new Error('MetaMask is not installed');
     }
-    // Force MetaMask to show the account selection popup
-    await window.ethereum.request({
-      method: 'wallet_requestPermissions',
-      params: [{ eth_accounts: {} }],
-    });
+
+    if (forceSelection) {
+      // Force MetaMask to show the account selection popup
+      await window.ethereum.request({
+        method: 'wallet_requestPermissions',
+        params: [{ eth_accounts: {} }],
+      });
+    }
+    
     return await window.ethereum.request({ 
       method: 'eth_requestAccounts'
     });
   }
 
   async connect() {
-    const [account] = await this.requestAccount();
+    const [account] = await this.requestAccount(true);
     return account;
   }
 
@@ -58,14 +62,14 @@ export class TokenContract {
   }
 
   async getBalance() {
-    const [account] = await this.requestAccount();
+    const [account] = await window.ethereum.request({ method: 'eth_accounts' });
     const contract = await this.initializeContract();
     const balance = await contract.balanceOf(account);
     return balance.toString();
   }
 
   async transfer(to: string, amount: string) {
-    await this.requestAccount();
+    const [account] = await window.ethereum.request({ method: 'eth_accounts' });
     const contract = await this.initializeContract();
     const transaction = await contract.transfer(to, amount);
     await transaction.wait();
