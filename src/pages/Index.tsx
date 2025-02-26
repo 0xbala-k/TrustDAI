@@ -1,6 +1,5 @@
-
-import { useState, useEffect } from 'react';
-import { useQuery, useMutation } from '@tanstack/react-query';
+import { useState, useEffect, useCallback } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { tokenContract } from '../services/TokenContract';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,15 +12,16 @@ const Index = () => {
   const [amount, setAmount] = useState('');
   const [account, setAccount] = useState<string | null>(null);
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   const { data: tokenData, isLoading: isLoadingTokenData } = useQuery({
-    queryKey: ['tokenData'],
+    queryKey: ['tokenData', account],
     queryFn: () => tokenContract.getTokenData(),
     enabled: !!account,
   });
 
   const { data: balance, isLoading: isLoadingBalance, refetch: refetchBalance } = useQuery({
-    queryKey: ['balance'],
+    queryKey: ['balance', account],
     queryFn: () => tokenContract.getBalance(),
     enabled: !!account,
   });
@@ -45,6 +45,25 @@ const Index = () => {
       });
     },
   });
+
+  const handleAccountsChanged = useCallback((accounts: string[]) => {
+    if (accounts.length > 0) {
+      setAccount(accounts[0]);
+      queryClient.invalidateQueries({ queryKey: ['balance'] });
+      queryClient.invalidateQueries({ queryKey: ['tokenData'] });
+      toast({
+        title: "Account Changed",
+        description: `Switched to account: ${accounts[0].slice(0, 6)}...${accounts[0].slice(-4)}`,
+      });
+    } else {
+      setAccount(null);
+      toast({
+        title: "Disconnected",
+        description: "No account connected",
+        variant: "destructive",
+      });
+    }
+  }, [queryClient, toast]);
 
   const handleConnect = async () => {
     try {
@@ -86,14 +105,6 @@ const Index = () => {
     
     checkConnection();
 
-    const handleAccountsChanged = (accounts: string[]) => {
-      if (accounts.length > 0) {
-        setAccount(accounts[0]);
-      } else {
-        setAccount(null);
-      }
-    };
-
     if (window.ethereum) {
       window.ethereum.on('accountsChanged', handleAccountsChanged);
       
@@ -101,7 +112,7 @@ const Index = () => {
         window.ethereum.removeListener('accountsChanged', handleAccountsChanged);
       };
     }
-  }, []);
+  }, [handleAccountsChanged]);
 
   return (
     <div className="container max-w-2xl mx-auto p-6 space-y-8">
