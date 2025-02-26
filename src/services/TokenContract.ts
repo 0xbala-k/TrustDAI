@@ -33,6 +33,17 @@ export class TokenContract {
     return await window.ethereum.request({ method: 'eth_requestAccounts' });
   }
 
+  async connect() {
+    const [account] = await this.requestAccount();
+    return account;
+  }
+
+  async disconnect() {
+    if (!window.ethereum?.removeListener) return;
+    window.ethereum.removeListener('accountsChanged', () => {});
+    window.ethereum.removeListener('chainChanged', () => {});
+  }
+
   async getTokenData() {
     const contract = await this.initializeContract();
     const name = await contract.name();
