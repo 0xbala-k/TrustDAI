@@ -94,11 +94,13 @@ const Index = () => {
       }
     };
 
-    window.ethereum?.on('accountsChanged', handleAccountsChanged);
-    
-    return () => {
-      window.ethereum?.removeListener('accountsChanged', handleAccountsChanged);
-    };
+    if (window.ethereum) {
+      window.ethereum.on('accountsChanged', handleAccountsChanged);
+      
+      return () => {
+        window.ethereum.removeListener('accountsChanged', handleAccountsChanged);
+      };
+    }
   }, []);
 
   return (

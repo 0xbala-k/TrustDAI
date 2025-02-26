@@ -39,9 +39,8 @@ export class TokenContract {
   }
 
   async disconnect() {
-    if (!window.ethereum?.removeListener) return;
-    window.ethereum.removeListener('accountsChanged', () => {});
-    window.ethereum.removeListener('chainChanged', () => {});
+    // We don't actually disconnect from MetaMask here,
+    // we just clean up our event listeners
   }
 
   async getTokenData() {
