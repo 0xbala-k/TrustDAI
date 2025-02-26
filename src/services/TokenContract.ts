@@ -42,9 +42,9 @@ export class TokenContract {
   }
 
   async disconnect() {
-    // Clear any cached connections
-    if (window.ethereum && window.ethereum.removeAllListeners) {
-      window.ethereum.removeAllListeners('accountsChanged');
+    // Clear any cached connections by removing event listeners
+    if (window.ethereum) {
+      window.ethereum.removeListener('accountsChanged', () => {});
     }
     this.contract = null;
   }
