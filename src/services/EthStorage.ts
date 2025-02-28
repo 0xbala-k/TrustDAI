@@ -40,7 +40,8 @@ export interface UploadResult {
   success: boolean;
   cid?: string;
   path?: string; // Added path for FlatDirectory support
-  error?: string;
+  url?: string;
+  message: string;
 }
 
 export interface DownloadResult {
@@ -119,142 +120,194 @@ export class EthStorageService {
     );
   }
 
+  /**
+   * Uploads a file to EthStorage
+   * @param file The file to upload
+   * @returns A promise that resolves to the upload result
+   */
   async uploadFile(file: File): Promise<UploadResult> {
     try {
-      // Convert file to binary data
+      // Convert file to ArrayBuffer
       const arrayBuffer = await file.arrayBuffer();
-      const data = new Uint8Array(arrayBuffer);
+      const fileData = new Uint8Array(arrayBuffer);
       
-      let cid: string;
-      let path: string;
+      // Check if FlatDirectory is enabled
+      const usingFlatDirectory = import.meta.env.VITE_WEB3URL_ENABLED === 'true';
+      const flatDirectoryAddress = import.meta.env.VITE_FLAT_DIRECTORY_ADDRESS;
       
-      // Use FlatDirectory if enabled, otherwise fall back to regular EthStorage
-      if (this.usingFlatDirectory) {
-        // Create a unique path using timestamp and filename
+      if (usingFlatDirectory && flatDirectoryAddress) {
+        // Using FlatDirectory on QuarkChain L2 testnet
+        console.log('Using FlatDirectory for file upload');
+        
+        // Initialize contract
+        const provider = new ethers.providers.JsonRpcProvider('https://rpc.beta.testnet.l2.quarkchain.io:8545/');
+        const signer = new ethers.Wallet(this.privateKey, provider);
+        
+        // FlatDirectory ABI (simplified for our needs)
+        const flatDirectoryAbi = [
+          "function store(string path, bytes data, string contentType) external returns (uint256)",
+          "function retrieve(string path) external view returns (bytes)",
+          "function remove(string path) external",
+          "function list() external view returns (string[])"
+        ];
+        
+        const flatDirectory = new ethers.Contract(
+          flatDirectoryAddress,
+          flatDirectoryAbi,
+          signer
+        );
+        
+        // Create a unique path for the file
         const timestamp = Date.now();
-        path = `files/${timestamp}_${file.name.replace(/[^a-zA-Z0-9_.-]/g, '_')}`;
+        const filePath = `${timestamp}_${file.name}`;
         
-        // Store the file in FlatDirectory
-        const flatDirContract = await this.initializeFlatDirectoryContract();
+        console.log(`Uploading file to FlatDirectory: ${filePath}`);
         
-        // Store returns the CID
-        cid = await flatDirContract.store(path, data);
-        console.log(`File uploaded to FlatDirectory at path: ${path}, CID: ${cid}`);
+        // Upload file to FlatDirectory
+        const tx = await flatDirectory.store(filePath, fileData, file.type);
+        console.log(`Transaction sent: ${tx.hash}`);
         
-        // Register in TrustDAI contract with additional metadata
-        await trustDAIContract.addFile(cid, {
-          path,
-          name: file.name,
-          contentType: file.type
-        });
+        // Wait for transaction to be mined
+        const receipt = await tx.wait();
+        console.log(`Transaction confirmed in block ${receipt.blockNumber}`);
+        
+        // Generate Web3URL for the file
+        const web3Url = generateWeb3URL(filePath);
+        
+        // Register file in TrustDAI contract
+        await this.trustDAIContract.registerFile(
+          filePath,
+          web3Url,
+          file.type,
+          fileData.length,
+          timestamp
+        );
+        
+        return {
+          success: true,
+          cid: '',
+          path: filePath,
+          url: web3Url,
+          message: 'File uploaded successfully to FlatDirectory'
+        };
+      } else {
+        // Legacy EthStorage upload (fallback)
+        console.log('Using legacy EthStorage for file upload');
+        
+        // Initialize contract
+        await this.initializeContract();
+        
+        if (!this.contract) {
+          throw new Error('Contract not initialized');
+        }
+        
+        // Upload file to EthStorage
+        const tx = await this.contract.uploadFile(fileData, file.name, file.type);
+        const receipt = await tx.wait();
+        
+        // Get CID from events
+        const event = receipt.events?.find(e => e.event === 'FileUploaded');
+        const cid = event?.args?.cid;
+        
+        if (!cid) {
+          throw new Error('CID not found in transaction receipt');
+        }
+        
+        // Register file in TrustDAI contract
+        await this.trustDAIContract.registerFile(
+          file.name,
+          cid,
+          file.type,
+          fileData.length,
+          Date.now()
+        );
         
         return {
           success: true,
           cid,
-          path
-        };
-      } else {
-        // Legacy approach: Upload directly to EthStorage
-        const contract = await this.initializeEthStorageContract();
-        cid = await contract.uploadFile(data, file.name, file.type);
-
-        // Register in TrustDAI contract
-        await trustDAIContract.addFile(cid);
-        
-        return {
-          success: true,
-          cid
+          path: '',
+          url: `https://ipfs.io/ipfs/${cid}`,
+          message: 'File uploaded successfully to EthStorage'
         };
       }
     } catch (error) {
-      console.error("Error uploading file:", error);
+      console.error('Error uploading file to EthStorage:', error);
       return {
         success: false,
-        error: error.message
+        cid: '',
+        path: '',
+        url: '',
+        message: `Error uploading file: ${error instanceof Error ? error.message : String(error)}`
       };
     }
   }
 
-  async downloadFile(cidOrPath: string): Promise<DownloadResult> {
+  /**
+   * Downloads a file from EthStorage
+   * @param fileId The CID or path of the file to download
+   * @returns A promise that resolves to the file data
+   */
+  async downloadFile(fileId: string): Promise<Uint8Array | null> {
     try {
-      // Check if this is a path or a CID
-      const isPath = cidOrPath.includes('/');
+      // Check if fileId is a path (for FlatDirectory) or CID (for legacy EthStorage)
+      const isPath = !fileId.startsWith('Qm') && fileId.includes('/');
       
-      if (this.usingFlatDirectory && isPath) {
-        // This is a path for FlatDirectory
+      if (isPath) {
+        // Using FlatDirectory
+        console.log(`Downloading file from FlatDirectory: ${fileId}`);
         
-        // Check access in TrustDAI first (need to get CID from path)
-        // This would require a mapping from paths to CIDs in TrustDAI
-        // For now, we'll just proceed with the download
-        
-        const flatDirContract = await this.initializeFlatDirectoryReadOnly();
-        const data = await flatDirContract.retrieve(cidOrPath);
-        
-        // Extract filename from path
-        const name = cidOrPath.split('/').pop() || '';
-        
-        // Infer content type from filename (simplified)
-        const contentType = this.inferContentType(name);
-        
-        // Without size information from FlatDirectory, use data length
-        const size = data.length;
-        
-        // We don't have owner information directly from FlatDirectory
-        // In a real implementation, we'd look this up from TrustDAI using the CID
-        const owner = "unknown"; // Placeholder
-        
-        return {
-          success: true,
-          data,
-          metadata: {
-            name,
-            contentType,
-            size,
-            cid: "unknown", // We don't have the CID from FlatDirectory retrieve
-            path: cidOrPath,
-            owner,
-            accessList: []
-          }
-        };
-      } else {
-        // Legacy CID-based approach
-        
-        // Check access in TrustDAI first
-        const hasAccess = await trustDAIContract.hasAccess(cidOrPath);
+        // Check if user has access to this file
+        const hasAccess = await this.trustDAIContract.hasAccess(fileId);
         if (!hasAccess) {
-          return {
-            success: false,
-            error: "You don't have access to this file"
-          };
+          throw new Error('Access denied');
         }
         
-        // Download from EthStorage
-        const contract = await this.initializeContractReadOnly();
-        const [data, name, contentType, size] = await contract.downloadFile(cidOrPath);
+        // Initialize contract
+        const flatDirectoryAddress = import.meta.env.VITE_FLAT_DIRECTORY_ADDRESS;
+        if (!flatDirectoryAddress) {
+          throw new Error('FlatDirectory contract address not configured');
+        }
         
-        // Get metadata from TrustDAI
-        const owner = await trustDAIContract.getFileOwner(cidOrPath);
-        const accessList = await trustDAIContract.getAccessList(cidOrPath);
+        const provider = new ethers.providers.JsonRpcProvider('https://rpc.beta.testnet.l2.quarkchain.io:8545/');
         
-        return {
-          success: true,
-          data,
-          metadata: {
-            name,
-            contentType,
-            size: size.toNumber(),
-            cid: cidOrPath,
-            owner,
-            accessList
-          }
-        };
+        // FlatDirectory ABI (simplified for our needs)
+        const flatDirectoryAbi = [
+          "function retrieve(string path) external view returns (bytes)"
+        ];
+        
+        const flatDirectory = new ethers.Contract(
+          flatDirectoryAddress,
+          flatDirectoryAbi,
+          provider
+        );
+        
+        // Retrieve file from FlatDirectory
+        const fileData = await flatDirectory.retrieve(fileId);
+        return fileData;
+      } else {
+        // Legacy EthStorage download (using CID)
+        console.log(`Downloading file from EthStorage: ${fileId}`);
+        
+        // Check if user has access to this file
+        const hasAccess = await this.trustDAIContract.hasAccess(fileId);
+        if (!hasAccess) {
+          throw new Error('Access denied');
+        }
+        
+        // Initialize contract
+        await this.initializeContract();
+        
+        if (!this.contract) {
+          throw new Error('Contract not initialized');
+        }
+        
+        // Download file from EthStorage
+        const fileData = await this.contract.downloadFile(fileId);
+        return fileData;
       }
     } catch (error) {
-      console.error("Error downloading file:", error);
-      return {
-        success: false,
-        error: error.message
-      };
+      console.error('Error downloading file from EthStorage:', error);
+      return null;
     }
   }
   
@@ -380,4 +433,33 @@ export class EthStorageService {
   }
 }
 
-export const ethStorageService = new EthStorageService(); 
+export const ethStorageService = new EthStorageService();
+
+/**
+ * Generates a Web3URL for accessing a file stored in EthStorage
+ * @param path The path of the file in the FlatDirectory contract
+ * @returns The Web3URL for accessing the file
+ */
+export function generateWeb3URL(path: string): string {
+  const contractAddress = import.meta.env.VITE_FLAT_DIRECTORY_ADDRESS;
+  const chainId = import.meta.env.VITE_FLAT_DIRECTORY_CHAIN_ID || '3337';
+  const useSubdomainFormat = import.meta.env.VITE_USE_SUBDOMAIN_FORMAT === 'true';
+  
+  if (!contractAddress) {
+    console.error('FlatDirectory contract address not configured');
+    return '';
+  }
+  
+  // Remove leading slash if present
+  const cleanPath = path.startsWith('/') ? path.substring(1) : path;
+  
+  // Generate the URL based on the format preference
+  if (useSubdomainFormat) {
+    // Subdomain format: https://<contract_address>.<chain_id>.w3link.io/<path>
+    const contractAddressNoPrefix = contractAddress.toLowerCase().replace('0x', '');
+    return `https://${contractAddressNoPrefix}.${chainId}.w3link.io/${cleanPath}`;
+  } else {
+    // Path format: https://eth.<chain_id>.w3link.io/ethereum:<contract_address>/<path>
+    return `https://eth.${chainId}.w3link.io/ethereum:${contractAddress}/${cleanPath}`;
+  }
+} 
