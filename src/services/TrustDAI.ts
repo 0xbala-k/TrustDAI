@@ -1,11 +1,8 @@
 
 import { ethers } from 'ethers';
 import TrustDAIArtifact from "../contracts/artifacts/TrustDAI.json";
-import dotenv from 'dotenv';
 
-dotenv.config();
-
-const contractAddress = process.env.CONTRACT_ADDRESS;
+const contractAddress = import.meta.env.VITE_CONTRACT_ADDRESS;
 
 export class TrustDAIContract {
   private provider: ethers.BrowserProvider;
@@ -18,7 +15,7 @@ export class TrustDAIContract {
     this.provider = new ethers.BrowserProvider(window.ethereum);
   }
 
-  private async initializeContract() {
+ async initializeContract() {
     if (!this.contract) {
       const signer = await this.provider.getSigner();
       this.contract = new ethers.Contract(
@@ -28,6 +25,15 @@ export class TrustDAIContract {
       );
     }
     return this.contract;
+  }
+
+  async getSigner(){
+    return this.provider.getSigner();
+  }
+
+  async getSignerAddress(){
+    const [account] = await window.ethereum.request({ method: 'eth_accounts' });
+    return account;
   }
 
   async requestAccount(forceSelection: boolean = false) {
@@ -71,8 +77,12 @@ export class TrustDAIContract {
 
   async addFile(fileID: string){
     const transaction = await this.contract.addFile(fileID);
-    await transaction.wait();
-    return transaction;
+    const receipt = await transaction.wait();
+    if (receipt.status !== 1) {
+        throw new Error('Transaction failed');
+      }
+      return receipt;
+    // return transaction;
   }
 
   async deleteFile(fileID: string){
