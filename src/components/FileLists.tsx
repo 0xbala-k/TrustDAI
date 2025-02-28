@@ -39,7 +39,7 @@ import {
   DialogHeader, 
   DialogTitle
 } from './ui/dialog';
-import { formatDate, formatWeb3Link } from '../utils/formatters';
+import { formatDate, formatWeb3Link, getShareableUrl, openWeb3Link } from '../utils/formatters';
 
 // Mock file data for demonstration
 const MOCK_FILES = [
@@ -244,14 +244,24 @@ export const FileList: React.FC<FileListProps> = ({
                   <TableCell>
                     <div className="flex items-center space-x-2">
                       <Link2 className="h-4 w-4 text-blue-600" />
-                      <span className="font-mono text-sm">{file.web3Link}</span>
+                      <span className="font-mono text-sm">{formatWeb3Link(file.cid, file.name)}</span>
                       <Button 
                         size="sm" 
                         variant="ghost" 
                         className="h-6 w-6 p-0"
-                        onClick={() => handleCopyWeb3Link(file.web3Link)}
+                        onClick={() => handleCopyWeb3Link(formatWeb3Link(file.cid, file.name))}
+                        title="Copy web3 link"
                       >
                         <Copy className="h-3 w-3" />
+                      </Button>
+                      <Button 
+                        size="sm" 
+                        variant="ghost" 
+                        className="h-6 w-6 p-0"
+                        onClick={() => openWeb3Link(file.cid, file.name)}
+                        title="Open web3 link"
+                      >
+                        <ExternalLink className="h-3 w-3" />
                       </Button>
                     </div>
                   </TableCell>
@@ -316,7 +326,18 @@ export const FileList: React.FC<FileListProps> = ({
               <FileText className="h-5 w-5 text-blue-600" />
               <div>
                 <p className="font-medium">{selectedFile?.name}</p>
-                <p className="text-sm text-gray-600">{selectedFile?.web3Link}</p>
+                <p className="text-sm font-mono text-gray-600">{selectedFile ? formatWeb3Link(selectedFile.cid, selectedFile.name) : ''}</p>
+                <p className="text-xs text-gray-500 mt-1">
+                  <a 
+                    href={selectedFile ? getShareableUrl(selectedFile.cid) : '#'} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="text-blue-600 hover:underline inline-flex items-center"
+                  >
+                    <ExternalLink className="h-3 w-3 mr-1" />
+                    Open shareable link
+                  </a>
+                </p>
               </div>
             </div>
           </div>

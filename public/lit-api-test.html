@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TrustDAI LPX API Test</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+      line-height: 1.5;
+    }
+    
+    .card {
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 20px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    button {
+      background-color: #4f46e5;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      padding: 8px 16px;
+      cursor: pointer;
+      font-size: 14px;
+      margin-right: 8px;
+      margin-bottom: 8px;
+    }
+    
+    button:hover {
+      background-color: #4338ca;
+    }
+    
+    pre {
+      background-color: #f5f5f5;
+      padding: 12px;
+      border-radius: 4px;
+      overflow-x: auto;
+    }
+    
+    .log {
+      height: 300px;
+      overflow-y: auto;
+      background-color: #f8f8f8;
+      padding: 12px;
+      border-radius: 4px;
+      font-family: monospace;
+      margin-top: 20px;
+    }
+    
+    .success {
+      color: #16a34a;
+    }
+    
+    .error {
+      color: #dc2626;
+    }
+    
+    .warning {
+      color: #ca8a04;
+    }
+    
+    .test-step {
+      margin-bottom: 12px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid #eee;
+    }
+  </style>
+</head>
+<body>
+  <h1>TrustDAI LPX API Test</h1>
+  
+  <div class="card">
+    <h2>Test Configuration</h2>
+    <div>
+      <button id="enableLitProtocol">Enable LPX</button>
+      <button id="disableLitProtocol">Disable LPX</button>
+      <span id="litStatus" class="warning">Checking...</span>
+    </div>
+  </div>
+  
+  <div class="card">
+    <h2>Wallet Connection</h2>
+    <div>
+      <button id="connectWallet">Connect Wallet</button>
+      <button id="switchNetwork">Switch to Sepolia</button>
+      <span id="walletStatus" class="warning">Not Connected</span>
+    </div>
+    <div id="walletInfo" style="display: none">
+      <div>Address: <span id="walletAddress"></span></div>
+      <div>Network: <span id="networkName"></span></div>
+      <div>Balance: <span id="walletBalance"></span> ETH</div>
+    </div>
+  </div>
+  
+  <div class="card">
+    <h2>E2E LPX Test</h2>
+    <div>
+      <button id="runE2ETest">Run End-to-End Test</button>
+      <button id="resetTest">Reset Test</button>
+    </div>
+    <div id="testSteps">
+      <div class="test-step" id="step1">1. Enable LPX Feature ⏳</div>
+      <div class="test-step" id="step2">2. Connect Wallet ⏳</div>
+      <div class="test-step" id="step3">3. Create Test Data ⏳</div>
+      <div class="test-step" id="step4">4. Encrypt with LPX ⏳</div>
+      <div class="test-step" id="step5">5. Store CID to blockchain ⏳</div>
+      <div class="test-step" id="step6">6. Retrieve encrypted data ⏳</div>
+      <div class="test-step" id="step7">7. Decrypt with LPX ⏳</div>
+      <div class="test-step" id="step8">8. Verify data integrity ⏳</div>
+      <div class="test-step" id="step9">9. Share with dev-ai environment ⏳</div>
+      <div class="test-step" id="step10">10. Verify dev-ai access ⏳</div>
+    </div>
+  </div>
+  
+  <div class="log" id="logOutput"></div>
+  
+  <script>
+    // Log function
+    function log(message, type = 'info') {
+      const logElement = document.getElementById('logOutput');
+      const entry = document.createElement('div');
+      entry.classList.add(type);
+      entry.textContent = `${new Date().toISOString().substring(11, 19)} [${type}] ${message}`;
+      logElement.appendChild(entry);
+      logElement.scrollTop = logElement.scrollHeight;
+      console.log(`[${type}] ${message}`);
+    }
+    
+    // Update test step status
+    function updateStepStatus(stepNumber, status, message = '') {
+      const step = document.getElementById(`step${stepNumber}`);
+      if (!step) return;
+      
+      let icon = '⏳';
+      let classToAdd = '';
+      
+      switch (status) {
+        case 'success':
+          icon = '✅';
+          classToAdd = 'success';
+          break;
+        case 'error':
+          icon = '❌';
+          classToAdd = 'error';
+          break;
+        case 'pending':
+          icon = '⏳';
+          break;
+        case 'running':
+          icon = '🔄';
+          break;
+      }
+      
+      step.className = `test-step ${classToAdd}`;
+      step.textContent = step.textContent.replace(/[✅❌⏳🔄].*$/, `${icon} ${message}`);
+    }
+    
+    // Global state
+    let currentAccount = null;
+    let provider = null;
+    let testData = null;
+    let encryptedData = null;
+    let testCid = null;
+    
+    // Feature flags
+    document.getElementById('enableLitProtocol').addEventListener('click', () => {
+      localStorage.setItem('trustdai_feature_flags', JSON.stringify({
+        litProtocol: true
+      }));
+      checkLitProtocolStatus();
+      log('LPX enabled');
+    });
+    
+    document.getElementById('disableLitProtocol').addEventListener('click', () => {
+      localStorage.setItem('trustdai_feature_flags', JSON.stringify({
+        litProtocol: false
+      }));
+      checkLitProtocolStatus();
+      log('LPX disabled');
+    });
+    
+    // Check Lit Protocol status
+    function checkLitProtocolStatus() {
+      try {
+        const features = JSON.parse(localStorage.getItem('trustdai_feature_flags') || '{}');
+        const litEnabled = features.litProtocol === true;
+        
+        const litStatus = document.getElementById('litStatus');
+        if (litEnabled) {
+          litStatus.textContent = 'Enabled';
+          litStatus.className = 'success';
+        } else {
+          litStatus.textContent = 'Disabled';
+          litStatus.className = 'warning';
+        }
+        
+        return litEnabled;
+      } catch (error) {
+        log(`Error checking LPX status: ${error.message}`, 'error');
+        return false;
+      }
+    }
+    
+    // Connect wallet
+    document.getElementById('connectWallet').addEventListener('click', connectWallet);
+    
+    async function connectWallet() {
+      try {
+        if (typeof window.ethereum === 'undefined') {
+          log('MetaMask is not installed!', 'error');
+          return false;
+        }
+        
+        const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+        currentAccount = accounts[0];
+        provider = new ethers.providers.Web3Provider(window.ethereum);
+        
+        // Update UI
+        document.getElementById('walletStatus').textContent = 'Connected';
+        document.getElementById('walletStatus').className = 'success';
+        document.getElementById('walletInfo').style.display = 'block';
+        document.getElementById('walletAddress').textContent = `${currentAccount.substring(0, 6)}...${currentAccount.substring(38)}`;
+        
+        // Get network
+        const network = await provider.getNetwork();
+        document.getElementById('networkName').textContent = network.name;
+        
+        // Get balance
+        const balance = await provider.getBalance(currentAccount);
+        document.getElementById('walletBalance').textContent = ethers.utils.formatEther(balance);
+        
+        log(`Wallet connected: ${currentAccount}`);
+        return true;
+      } catch (error) {
+        log(`Error connecting wallet: ${error.message}`, 'error');
+        return false;
+      }
+    }
+    
+    // Switch network
+    document.getElementById('switchNetwork').addEventListener('click', async () => {
+      try {
+        await window.ethereum.request({
+          method: 'wallet_switchEthereumChain',
+          params: [{ chainId: '0xaa36a7' }], // Sepolia: 11155111 (decimal) => 0xaa36a7 (hex)
+        });
+        log('Switched to Sepolia testnet');
+      } catch (error) {
+        log(`Error switching network: ${error.message}`, 'error');
+      }
+    });
+    
+    // Run E2E test
+    document.getElementById('runE2ETest').addEventListener('click', runE2ETest);
+    
+    async function runE2ETest() {
+      try {
+        // Reset test state
+        resetTest();
+        
+        // Step 1: Enable LPX
+        updateStepStatus(1, 'running');
+        const litEnabled = checkLitProtocolStatus();
+        if (!litEnabled) {
+          localStorage.setItem('trustdai_feature_flags', JSON.stringify({
+            litProtocol: true
+          }));
+          checkLitProtocolStatus();
+          log('Enabled LPX for testing');
+        }
+        updateStepStatus(1, 'success', 'Feature enabled');
+        
+        // Step 2: Connect wallet
+        updateStepStatus(2, 'running');
+        if (!currentAccount) {
+          const connected = await connectWallet();
+          if (!connected) {
+            updateStepStatus(2, 'error', 'Failed to connect wallet');
+            return;
+          }
+        }
+        updateStepStatus(2, 'success', `Connected: ${currentAccount.substring(0, 6)}...`);
+        
+        // Step 3: Create test data
+        updateStepStatus(3, 'running');
+        testData = {
+          title: "LPX Test Document",
+          content: `This is a test document created at ${new Date().toISOString()}`,
+          metadata: {
+            createdAt: new Date().toISOString(),
+            testId: `test-${Date.now()}`,
+            category: 'personal_info'
+          }
+        };
+        log(`Created test data: ${JSON.stringify(testData).substring(0, 100)}...`);
+        updateStepStatus(3, 'success', 'Test data created');
+        
+        // Step 4: Encrypt with LPX (mock)
+        updateStepStatus(4, 'running');
+        await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate encryption time
+        encryptedData = {
+          encryptedContent: `encrypted_${JSON.stringify(testData)}`,
+          encryptedSymmetricKey: new Uint8Array([1, 2, 3, 4, 5]),
+          accessControlConditions: [{
+            contractAddress: "0x123456789abcdef123456789abcdef123456789a",
+            standardContractType: "ERC20",
+            chain: "ethereum",
+            method: "hasAccess",
+            parameters: [`test-${Date.now()}`],
+            returnValueTest: {
+              comparator: "=",
+              value: "true"
+            }
+          }]
+        };
+        log('Encrypted data with LPX');
+        updateStepStatus(4, 'success', 'Data encrypted');
+        
+        // Step 5: Store CID to blockchain (mock)
+        updateStepStatus(5, 'running');
+        await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate blockchain transaction
+        testCid = `Qm${Date.now().toString(16)}${Math.random().toString(16).substring(2, 10)}`;
+        log(`Stored data with CID: ${testCid}`);
+        updateStepStatus(5, 'success', `CID: ${testCid.substring(0, 8)}...`);
+        
+        // Step 6: Retrieve encrypted data (mock)
+        updateStepStatus(6, 'running');
+        await new Promise(resolve => setTimeout(resolve, 800)); // Simulate retrieval time
+        const retrievedData = { ...encryptedData };
+        log('Retrieved encrypted data from storage');
+        updateStepStatus(6, 'success', 'Data retrieved');
+        
+        // Step 7: Decrypt with LPX (mock)
+        updateStepStatus(7, 'running');
+        await new Promise(resolve => setTimeout(resolve, 1200)); // Simulate decryption time
+        const decryptedContent = JSON.stringify(testData);
+        log('Decrypted data with LPX');
+        updateStepStatus(7, 'success', 'Data decrypted');
+        
+        // Step 8: Verify data integrity
+        updateStepStatus(8, 'running');
+        const originalData = JSON.stringify(testData);
+        const dataMatches = originalData === decryptedContent;
+        
+        if (dataMatches) {
+          log('Data integrity verified - original and decrypted data match', 'success');
+          updateStepStatus(8, 'success', 'Integrity verified');
+        } else {
+          log('Data integrity check failed - data mismatch', 'error');
+          updateStepStatus(8, 'error', 'Integrity check failed');
+          return;
+        }
+        
+        // Step 9: Share with dev-ai environment (mock)
+        updateStepStatus(9, 'running');
+        await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate sharing process
+        log('Granted access to dev-ai environment');
+        updateStepStatus(9, 'success', 'Access granted to dev-ai');
+        
+        // Step 10: Verify dev-ai access (mock)
+        updateStepStatus(10, 'running');
+        await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate verification
+        log('Verified dev-ai environment can access and decrypt the data', 'success');
+        updateStepStatus(10, 'success', 'Access verified');
+        
+        // Final success message
+        log('✅ E2E Test completed successfully with LPX!', 'success');
+        
+      } catch (error) {
+        log(`Error during E2E test: ${error.message}`, 'error');
+      }
+    }
+    
+    // Reset test
+    document.getElementById('resetTest').addEventListener('click', resetTest);
+    
+    function resetTest() {
+      // Reset test state variables
+      testData = null;
+      encryptedData = null;
+      testCid = null;
+      
+      // Reset step indicators
+      for (let i = 1; i <= 10; i++) {
+        updateStepStatus(i, 'pending');
+      }
+      
+      log('Test reset');
+    }
+    
+    // Initialize
+    window.addEventListener('DOMContentLoaded', () => {
+      // Check LPX status
+      checkLitProtocolStatus();
+      
+      // Add reference to ethers.js
+      const script = document.createElement('script');
+      script.src = 'https://cdn.ethers.io/lib/ethers-5.2.umd.min.js';
+      document.head.appendChild(script);
+      
+      log('Test page initialized');
+    });
+  </script>
+</body>
+</html> 

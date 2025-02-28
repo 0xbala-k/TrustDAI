@@ -41,11 +41,15 @@ const NETWORKS = {
   },
   lit: {
     name: 'LitProtocol',
-    symbol: 'LIT',
+    symbol: 'LPX',
     icon: '🔥',
     explorerUrl: 'https://explorer.litprotocol.com/address/'
   }
 };
+
+// Add these constants at the top of the file, below the NETWORKS object
+const LIT_PROTOCOL_CHAIN_ID = 175188; // Chronicle Yellowstone
+const LIT_PROTOCOL_RPC_URL = 'https://yellowstone-rpc.litprotocol.com/';
 
 const WalletConnection: React.FC = () => {
   const { 
@@ -96,10 +100,27 @@ const WalletConnection: React.FC = () => {
         setQuarkBalance('10.5');
       }, 1000);
       
-      // Simulate LIT balance fetch
-      setTimeout(() => {
-        setLitBalance('25.75');
-      }, 1500);
+      // Fetch actual LPX balance from Chronicle Yellowstone network
+      try {
+        // Create a provider connected to Lit Protocol's testnet
+        const litProvider = new ethers.JsonRpcProvider(LIT_PROTOCOL_RPC_URL);
+        
+        // Fetch LPX balance for the same address
+        const lpxBalance = await litProvider.getBalance(address);
+        console.log('LPX balance fetched:', ethers.formatEther(lpxBalance));
+        
+        // Set the LPX balance
+        setLitBalance(ethers.formatEther(lpxBalance));
+      } catch (lpxError) {
+        console.error('Error fetching LPX balance:', lpxError);
+        
+        // Fallback to simulated balance for demo purposes
+        setTimeout(() => {
+          const mockBalance = (parseFloat(address.substring(2, 6), 16) % 100) / 10;
+          setLitBalance(mockBalance.toFixed(2));
+          console.log('Using simulated LPX balance:', mockBalance.toFixed(2));
+        }, 1500);
+      }
     } catch (error) {
       console.error('Error fetching balances:', error);
     } finally {
@@ -254,12 +275,12 @@ const WalletConnection: React.FC = () => {
                       <div className="bg-amber-100 text-amber-800 h-6 w-6 rounded-full flex items-center justify-center mr-2">
                         🔥
                       </div>
-                      <span>Lit Protocol</span>
+                      <span>Lit Protocol LPX</span>
                     </div>
                     {isLoadingBalances ? (
                       <Skeleton className="h-4 w-16" />
                     ) : (
-                      <span className="font-mono">{formatBalance(litBalance, 4, 'LIT')}</span>
+                      <span className="font-mono">{formatBalance(litBalance, 4, 'LPX')}</span>
                     )}
                   </div>
                 </div>

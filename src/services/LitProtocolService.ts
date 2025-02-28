@@ -1,7 +1,7 @@
 /**
  * LitProtocolService
  * 
- * Service to handle encryption and decryption of files using Lit Protocol
+ * Service to handle encryption and decryption of files using LPX (Lit Protocol)
  * https://litprotocol.com/
  */
 
@@ -70,7 +70,7 @@ class MockLitNodeClient {
 const litNodeClient = new MockLitNodeClient();
 
 /**
- * Access control conditions for Lit Protocol
+ * Access control conditions for LPX
  * This defines who can decrypt the file based on blockchain conditions
  */
 interface AccessControlConditions {
@@ -95,15 +95,15 @@ export class LitProtocolService {
    */
   private async initLitClient() {
     if (!isFeatureEnabled('LIT_PROTOCOL')) {
-      console.log('Lit Protocol feature is disabled');
+      console.log('LPX feature is disabled');
       return;
     }
     
     try {
       await litNodeClient.connect();
-      console.log('Lit Protocol client connected');
+      console.log('LPX client connected');
     } catch (error) {
-      console.error('Error connecting to Lit Protocol:', error);
+      console.error('Error connecting to LPX:', error);
     }
   }
 
@@ -122,7 +122,7 @@ export class LitProtocolService {
   }
 
   /**
-   * Encrypt a file using Lit Protocol
+   * Encrypt a file using LPX
    * @param fileContent - The content of the file to encrypt
    * @param fileCid - The CID of the file in IPFS
    * @param ownerAddress - The address of the file owner
@@ -130,7 +130,7 @@ export class LitProtocolService {
    */
   async encryptFile(fileContent: string, fileCid: string, ownerAddress: string) {
     if (!isFeatureEnabled('LIT_PROTOCOL')) {
-      throw new Error('Lit Protocol feature is disabled');
+      throw new Error('LPX feature is disabled');
     }
 
     try {
@@ -168,7 +168,7 @@ export class LitProtocolService {
   }
 
   /**
-   * Decrypt a file using Lit Protocol
+   * Decrypt a file using LPX
    * @param encryptedContent - The encrypted content of the file
    * @param encryptedSymmetricKey - The encrypted symmetric key
    * @param accessControlConditions - The access control conditions
@@ -180,7 +180,7 @@ export class LitProtocolService {
     accessControlConditions: AccessControlConditions[]
   ) {
     if (!isFeatureEnabled('LIT_PROTOCOL')) {
-      throw new Error('Lit Protocol feature is disabled');
+      throw new Error('LPX feature is disabled');
     }
 
     try {

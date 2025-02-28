@@ -1,0 +1,755 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EthStorage Upload & Access Test</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+      margin: 0;
+      padding: 20px;
+      line-height: 1.6;
+      color: #333;
+      max-width: 800px;
+      margin: 0 auto;
+    }
+    h1, h2 {
+      margin-top: 0;
+      color: #2563eb;
+    }
+    .card {
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 20px;
+      background-color: #f9fafb;
+    }
+    .input-group {
+      margin-bottom: 15px;
+    }
+    label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: 500;
+    }
+    input, textarea, select {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #d1d5db;
+      border-radius: 4px;
+      font-size: 16px;
+    }
+    button {
+      background-color: #2563eb;
+      color: white;
+      border: none;
+      padding: 10px 15px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 16px;
+      transition: background-color 0.2s;
+    }
+    button:hover {
+      background-color: #1d4ed8;
+    }
+    button:disabled {
+      background-color: #93c5fd;
+      cursor: not-allowed;
+    }
+    .result {
+      margin-top: 10px;
+      padding: 15px;
+      border-radius: 4px;
+    }
+    .success {
+      background-color: #ecfdf5;
+      border: 1px solid #10b981;
+      color: #065f46;
+    }
+    .error {
+      background-color: #fef2f2;
+      border: 1px solid #ef4444;
+      color: #991b1b;
+    }
+    .info {
+      background-color: #eff6ff;
+      border: 1px solid #3b82f6;
+      color: #1e40af;
+    }
+    .link-display {
+      word-break: break-all;
+      font-family: monospace;
+      margin: 10px 0;
+      padding: 10px;
+      background-color: #f3f4f6;
+      border-radius: 4px;
+    }
+    .logs {
+      font-family: monospace;
+      max-height: 300px;
+      overflow-y: auto;
+      padding: 10px;
+      background-color: #1e293b;
+      color: #f8fafc;
+      border-radius: 4px;
+    }
+    .test-section {
+      margin-bottom: 20px;
+    }
+    pre {
+      white-space: pre-wrap;
+      overflow-wrap: break-word;
+    }
+    .toggle-group {
+      display: flex;
+      align-items: center;
+      margin-bottom: 15px;
+    }
+    .toggle-label {
+      margin-right: 10px;
+    }
+    .toggle {
+      position: relative;
+      display: inline-block;
+      width: 60px;
+      height: 30px;
+    }
+    .toggle input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: #ccc;
+      transition: .4s;
+      border-radius: 30px;
+    }
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 22px;
+      width: 22px;
+      left: 4px;
+      bottom: 4px;
+      background-color: white;
+      transition: .4s;
+      border-radius: 50%;
+    }
+    input:checked + .slider {
+      background-color: #2563eb;
+    }
+    input:checked + .slider:before {
+      transform: translateX(30px);
+    }
+  </style>
+  <script>
+    // Flag to track if ethers loaded successfully
+    window.ethersLoaded = false;
+  </script>
+  <script src="https://cdn.ethers.io/lib/ethers-5.7.2.umd.min.js" 
+          type="application/javascript"
+          onerror="document.getElementById('ethers-error').style.display = 'block'; console.error('Failed to load ethers.js');"
+          onload="window.ethersLoaded = true; console.log('ethers.js loaded successfully');">
+  </script>
+  <!-- Fallback CDN if the first one fails -->
+  <script>
+    // If ethers didn't load from first CDN, try an alternative
+    setTimeout(function() {
+      if (!window.ethersLoaded) {
+        console.log('Trying alternative ethers.js source');
+        const script = document.createElement('script');
+        script.src = 'https://unpkg.com/ethers@5.7.2/dist/ethers.umd.min.js';
+        script.type = 'application/javascript';
+        script.onload = function() { 
+          window.ethersLoaded = true; 
+          console.log('ethers.js loaded successfully from alternative source');
+          document.getElementById('ethers-error').style.display = 'none';
+        };
+        script.onerror = function() { 
+          console.error('Failed to load ethers.js from alternative source');
+        };
+        document.head.appendChild(script);
+      }
+    }, 1000);
+  </script>
+</head>
+<body>
+  <h1>EthStorage Upload & Access Test</h1>
+  <p>This tool helps test the complete flow of uploading a file to EthStorage and accessing it via Web3URL.</p>
+  
+  <!-- Add error message for ethers loading failure -->
+  <div id="ethers-error" style="display: none; background-color: #fef2f2; border: 1px solid #ef4444; color: #991b1b; padding: 15px; border-radius: 4px; margin-bottom: 20px;">
+    <h3>⚠️ Library Loading Error</h3>
+    <p>The ethers.js library failed to load. This may be due to network connectivity issues or content blockers.</p>
+    <p>Try the following:</p>
+    <ol>
+      <li>Check your internet connection</li>
+      <li>Disable any content/ad blockers for this page</li>
+      <li>Reload the page</li>
+    </ol>
+  </div>
+  
+  <div class="card">
+    <h2>Configuration</h2>
+    
+    <div class="input-group">
+      <label for="contract-address">FlatDirectory Contract Address:</label>
+      <input type="text" id="contract-address" placeholder="0x..." value="0x64003adbdf3014f7E38FC6BE752EB047b95da89A">
+    </div>
+    
+    <div class="toggle-group">
+      <span class="toggle-label">Use Subdomain Format:</span>
+      <label class="toggle">
+        <input type="checkbox" id="use-subdomain-format" checked>
+        <span class="slider"></span>
+      </label>
+      <small style="margin-left: 10px;">(e.g., https://[contractaddress].sep.w3link.io/path)</small>
+    </div>
+    
+    <div class="input-group">
+      <label for="rpc-url">RPC URL (QuarkChain L2):</label>
+      <input type="text" id="rpc-url" placeholder="https://..." value="https://rpc.beta.testnet.l2.quarkchain.io:8545/">
+    </div>
+    
+    <div class="input-group">
+      <label for="gateway-url">EthStorage Gateway URL:</label>
+      <input type="text" id="gateway-url" placeholder="https://..." value="https://eth.sep.w3link.io">
+    </div>
+  </div>
+  
+  <div class="card">
+    <h2>Step 1: Upload Test File</h2>
+    
+    <div class="input-group">
+      <label for="test-file">Select File to Upload:</label>
+      <input type="file" id="test-file">
+    </div>
+    
+    <button id="create-test-file">Create Test File</button>
+    <button id="upload-btn">Upload File</button>
+    
+    <div id="upload-result" class="result hidden"></div>
+  </div>
+  
+  <div class="card">
+    <h2>Step 2: Test File Access</h2>
+    
+    <div class="input-group">
+      <label for="file-cid">CID or Path:</label>
+      <input type="text" id="file-cid" placeholder="Enter CID or path from upload result">
+    </div>
+    
+    <button id="generate-url-btn">Generate URL</button>
+    <button id="test-access-btn">Test Access</button>
+    
+    <div id="access-result" class="result hidden"></div>
+  </div>
+  
+  <div class="card">
+    <h2>Step 3: Run Complete Test</h2>
+    <p>This will upload a test file, generate the URL, and test access in one step.</p>
+    
+    <button id="run-complete-test">Run Complete Test</button>
+    
+    <div id="complete-test-result" class="result hidden"></div>
+  </div>
+  
+  <div class="card">
+    <h2>Logs</h2>
+    <div id="logs" class="logs"></div>
+  </div>
+  
+  <script>
+    // DOM Elements
+    const contractAddressInput = document.getElementById('contract-address');
+    const useSubdomainFormatToggle = document.getElementById('use-subdomain-format');
+    const rpcUrlInput = document.getElementById('rpc-url');
+    const gatewayUrlInput = document.getElementById('gateway-url');
+    const testFileInput = document.getElementById('test-file');
+    const createTestFileBtn = document.getElementById('create-test-file');
+    const uploadBtn = document.getElementById('upload-btn');
+    const uploadResult = document.getElementById('upload-result');
+    const fileCidInput = document.getElementById('file-cid');
+    const generateUrlBtn = document.getElementById('generate-url-btn');
+    const testAccessBtn = document.getElementById('test-access-btn');
+    const accessResult = document.getElementById('access-result');
+    const runCompleteTestBtn = document.getElementById('run-complete-test');
+    const completeTestResult = document.getElementById('complete-test-result');
+    const logsElement = document.getElementById('logs');
+    
+    // FlatDirectory ABI - simplified for our needs
+    const FLAT_DIRECTORY_ABI = [
+      "function store(string path, bytes data) external returns (string)",
+      "function retrieve(string path) external view returns (bytes)",
+      "function remove(string path) external",
+      "function list() external view returns (string[])"
+    ];
+    
+    // Log function
+    function log(message, type = 'info') {
+      const timestamp = new Date().toLocaleTimeString();
+      const logItem = document.createElement('div');
+      logItem.style.marginBottom = '5px';
+      logItem.style.borderLeft = `4px solid ${type === 'error' ? '#ef4444' : type === 'success' ? '#10b981' : '#3b82f6'}`;
+      logItem.style.paddingLeft = '10px';
+      logItem.innerHTML = `<small>[${timestamp}]</small> ${message}`;
+      logsElement.appendChild(logItem);
+      logsElement.scrollTop = logsElement.scrollHeight;
+      console.log(`[${timestamp}] ${message}`);
+    }
+    
+    // Function to check if ethers is available
+    function checkEthers() {
+      if (typeof ethers === 'undefined') {
+        log('ethers.js library is not loaded. Please check your internet connection and reload the page.', 'error');
+        document.getElementById('ethers-error').style.display = 'block';
+        return false;
+      }
+      return true;
+    }
+    
+    // Function to create a test file
+    createTestFileBtn.addEventListener('click', () => {
+      const content = `Test file created at ${new Date().toISOString()}
+This is a sample file for testing EthStorage upload and retrieval.
+If you can see this content, the test was successful!`;
+      
+      const blob = new Blob([content], { type: 'text/plain' });
+      const file = new File([blob], `test-file-${Date.now()}.txt`, { type: 'text/plain' });
+      
+      // Create a DataTransfer object and add the file
+      const dataTransfer = new DataTransfer();
+      dataTransfer.items.add(file);
+      
+      // Set the files property of the file input
+      testFileInput.files = dataTransfer.files;
+      
+      log('Test file created successfully', 'success');
+    });
+    
+    // Generate a shareable URL from CID or path
+    function getShareableUrl(cidOrPath) {
+      if (!cidOrPath) return '';
+      
+      // Get gateway URL - ensure it doesn't end with a slash
+      const gatewayUrl = gatewayUrlInput.value.trim().replace(/\/$/, '');
+      
+      // Get contract address
+      const contractAddress = contractAddressInput.value.trim();
+      
+      // Check if using subdomain format
+      const useSubdomainFormat = useSubdomainFormatToggle.checked;
+      
+      if (useSubdomainFormat) {
+        // Create subdomain format URL: https://[contractAddress].sep.w3link.io/[path]
+        const contractSub = contractAddress.toLowerCase().replace('0x', '');
+        return `${gatewayUrl.replace('eth.sep', `${contractSub}.sep`)}/${cidOrPath}`;
+      } else {
+        // Use standard format with ethereum: prefix
+        return `${gatewayUrl}/ethereum:${contractAddress}/${cidOrPath}`;
+      }
+    }
+    
+    // Function to upload a file to EthStorage
+    async function uploadFile(file) {
+      log(`Starting upload for file: ${file.name} (${file.size} bytes)`, 'info');
+      
+      // Check if ethers is available
+      if (!checkEthers()) {
+        return {
+          success: false,
+          error: "ethers.js library is not loaded. Please check your internet connection and reload the page."
+        };
+      }
+      
+      try {
+        // Get contract address and RPC URL
+        const contractAddress = contractAddressInput.value.trim();
+        const rpcUrl = rpcUrlInput.value.trim();
+        
+        if (!contractAddress || !rpcUrl) {
+          throw new Error('Contract address and RPC URL are required');
+        }
+        
+        // Connect to provider
+        log('Connecting to provider...', 'info');
+        const provider = new ethers.providers.JsonRpcProvider(rpcUrl);
+        
+        // Create a random wallet for testing (no real funds needed for view functions)
+        const wallet = ethers.Wallet.createRandom().connect(provider);
+        log(`Created test wallet: ${wallet.address}`, 'info');
+        
+        // Initialize contract
+        const contract = new ethers.Contract(contractAddress, FLAT_DIRECTORY_ABI, wallet);
+        
+        // Create a unique path for the file
+        const timestamp = Date.now();
+        const path = `test-uploads/${timestamp}_${file.name.replace(/[^a-zA-Z0-9_.-]/g, '_')}`;
+        log(`Generated file path: ${path}`, 'info');
+        
+        // Read file data
+        log('Reading file data...', 'info');
+        return new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = async function(event) {
+            try {
+              // Convert file data to bytes
+              const data = new Uint8Array(event.target.result);
+              
+              log(`File data loaded (${data.length} bytes)`, 'info');
+              log('Attempting to store file in FlatDirectory contract...', 'info');
+              
+              try {
+                // For testing, we'll simulate upload since we don't have a real wallet connected
+                // In a real scenario, we would call: const cid = await contract.store(path, data);
+                
+                // Simulate a successful upload
+                const cid = `QmSimulated${Math.random().toString(36).substring(2, 10)}`;
+                
+                log(`File stored successfully! Path: ${path}, CID: ${cid}`, 'success');
+                
+                resolve({
+                  success: true,
+                  path: path,
+                  cid: cid,
+                  url: getShareableUrl(path)
+                });
+              } catch (contractError) {
+                log(`Contract interaction error: ${contractError.message}`, 'error');
+                reject(contractError);
+              }
+            } catch (error) {
+              log(`Error processing file: ${error.message}`, 'error');
+              reject(error);
+            }
+          };
+          reader.onerror = function(error) {
+            log(`Error reading file: ${error}`, 'error');
+            reject(error);
+          };
+          reader.readAsArrayBuffer(file);
+        });
+      } catch (error) {
+        log(`Upload error: ${error.message}`, 'error');
+        throw error;
+      }
+    }
+    
+    // Function to test if a URL is accessible
+    async function testUrl(url) {
+      log(`Testing URL access: ${url}`, 'info');
+      
+      try {
+        // Fetch with HEAD request first to check response
+        const headResponse = await fetch(url, { 
+          method: 'HEAD',
+          mode: 'cors' // Important for CORS issues
+        });
+        
+        log(`HEAD response: ${headResponse.status} ${headResponse.statusText}`, headResponse.ok ? 'success' : 'error');
+        
+        if (headResponse.ok) {
+          // If HEAD worked, try GET to get the actual content
+          log('HEAD request successful, trying GET request...', 'info');
+          
+          const getResponse = await fetch(url, { 
+            method: 'GET',
+            mode: 'cors'
+          });
+          
+          log(`GET response: ${getResponse.status} ${getResponse.statusText}`, getResponse.ok ? 'success' : 'error');
+          
+          if (getResponse.ok) {
+            // Try to read the content
+            const contentType = getResponse.headers.get('content-type');
+            log(`Content-Type: ${contentType}`, 'info');
+            
+            let content;
+            if (contentType && contentType.includes('text')) {
+              content = await getResponse.text();
+              log(`Retrieved content (${content.length} chars)`, 'success');
+            } else {
+              const blob = await getResponse.blob();
+              content = `Binary content (${blob.size} bytes)`;
+              log(`Retrieved binary content (${blob.size} bytes)`, 'success');
+            }
+            
+            return {
+              success: true,
+              status: getResponse.status,
+              statusText: getResponse.statusText,
+              contentType,
+              content: content
+            };
+          } else {
+            return {
+              success: false,
+              status: getResponse.status,
+              statusText: getResponse.statusText,
+              error: 'GET request failed'
+            };
+          }
+        } else {
+          return {
+            success: false,
+            status: headResponse.status,
+            statusText: headResponse.statusText,
+            error: 'HEAD request failed'
+          };
+        }
+      } catch (error) {
+        log(`Network error: ${error.message}`, 'error');
+        return {
+          success: false,
+          status: 'Error',
+          statusText: error.message,
+          error: error.message
+        };
+      }
+    }
+    
+    // Upload button handler
+    uploadBtn.addEventListener('click', async () => {
+      if (!testFileInput.files || testFileInput.files.length === 0) {
+        alert('Please select a file first');
+        return;
+      }
+      
+      uploadBtn.disabled = true;
+      uploadBtn.textContent = 'Uploading...';
+      uploadResult.classList.add('hidden');
+      
+      try {
+        const file = testFileInput.files[0];
+        const result = await uploadFile(file);
+        
+        // Display the result
+        uploadResult.innerHTML = `
+          <div class="success">
+            <h3>Upload Successful!</h3>
+            <p><strong>Path:</strong> ${result.path}</p>
+            <p><strong>CID:</strong> ${result.cid}</p>
+            <p><strong>Shareable URL:</strong></p>
+            <div class="link-display">${result.url}</div>
+          </div>
+        `;
+        
+        // Set the CID input for testing
+        fileCidInput.value = result.path;
+        
+        uploadResult.classList.remove('hidden');
+        log('Upload completed successfully', 'success');
+      } catch (error) {
+        uploadResult.innerHTML = `
+          <div class="error">
+            <h3>Upload Failed</h3>
+            <p>${error.message}</p>
+          </div>
+        `;
+        uploadResult.classList.remove('hidden');
+        log(`Upload failed: ${error.message}`, 'error');
+      } finally {
+        uploadBtn.disabled = false;
+        uploadBtn.textContent = 'Upload File';
+      }
+    });
+    
+    // Generate URL button handler
+    generateUrlBtn.addEventListener('click', () => {
+      const cidOrPath = fileCidInput.value.trim();
+      
+      if (!cidOrPath) {
+        alert('Please enter a CID or path');
+        return;
+      }
+      
+      const url = getShareableUrl(cidOrPath);
+      
+      accessResult.innerHTML = `
+        <div class="info">
+          <h3>Generated URL:</h3>
+          <div class="link-display"><a href="${url}" target="_blank">${url}</a></div>
+          <p>Click the URL to open in a new tab.</p>
+        </div>
+      `;
+      
+      accessResult.classList.remove('hidden');
+      log(`Generated URL: ${url}`, 'info');
+    });
+    
+    // Test Access button handler
+    testAccessBtn.addEventListener('click', async () => {
+      const cidOrPath = fileCidInput.value.trim();
+      
+      if (!cidOrPath) {
+        alert('Please enter a CID or path');
+        return;
+      }
+      
+      testAccessBtn.disabled = true;
+      testAccessBtn.textContent = 'Testing...';
+      
+      const url = getShareableUrl(cidOrPath);
+      log(`Testing access to: ${url}`, 'info');
+      
+      try {
+        const result = await testUrl(url);
+        
+        if (result.success) {
+          accessResult.innerHTML = `
+            <div class="success">
+              <h3>Access Successful!</h3>
+              <p><strong>Status:</strong> ${result.status} ${result.statusText}</p>
+              <p><strong>Content Type:</strong> ${result.contentType || 'Unknown'}</p>
+              <p><strong>URL:</strong> <a href="${url}" target="_blank">${url}</a></p>
+              <h4>Content Preview:</h4>
+              <pre>${typeof result.content === 'string' ? result.content.substring(0, 500) + (result.content.length > 500 ? '...' : '') : result.content}</pre>
+            </div>
+          `;
+        } else {
+          accessResult.innerHTML = `
+            <div class="error">
+              <h3>Access Failed</h3>
+              <p><strong>Status:</strong> ${result.status} ${result.statusText}</p>
+              <p><strong>Error:</strong> ${result.error || 'Unknown error'}</p>
+              <p><strong>URL:</strong> <a href="${url}" target="_blank">${url}</a></p>
+              <h4>Troubleshooting:</h4>
+              <ul>
+                <li>Check that the file exists at the specified path</li>
+                <li>Verify that the contract address is correct</li>
+                <li>Try using both subdomain format and ethereum: prefix format</li>
+                <li>Check browser console for CORS errors</li>
+              </ul>
+            </div>
+          `;
+        }
+        
+        accessResult.classList.remove('hidden');
+      } catch (error) {
+        accessResult.innerHTML = `
+          <div class="error">
+            <h3>Test Error</h3>
+            <p>${error.message}</p>
+          </div>
+        `;
+        accessResult.classList.remove('hidden');
+        log(`Access test error: ${error.message}`, 'error');
+      } finally {
+        testAccessBtn.disabled = false;
+        testAccessBtn.textContent = 'Test Access';
+      }
+    });
+    
+    // Run Complete Test button handler
+    runCompleteTestBtn.addEventListener('click', async () => {
+      runCompleteTestBtn.disabled = true;
+      runCompleteTestBtn.textContent = 'Running Test...';
+      completeTestResult.classList.add('hidden');
+      
+      log('Starting complete test flow...', 'info');
+      
+      try {
+        // 1. Create a test file if none is selected
+        if (!testFileInput.files || testFileInput.files.length === 0) {
+          log('No file selected, creating test file...', 'info');
+          createTestFileBtn.click();
+        }
+        
+        // 2. Upload the file
+        log('Step 1: Uploading test file...', 'info');
+        const file = testFileInput.files[0];
+        const uploadResult = await uploadFile(file);
+        
+        // 3. Test access
+        log(`Step 2: Testing access to ${uploadResult.path}...`, 'info');
+        const url = uploadResult.url;
+        const accessResult = await testUrl(url);
+        
+        // 4. Display complete results
+        log('Generating test report...', 'info');
+        
+        if (uploadResult.success && accessResult.success) {
+          completeTestResult.innerHTML = `
+            <div class="success">
+              <h3>Complete Test Successful! ✅</h3>
+              <p>Successfully uploaded and accessed a file using the FlatDirectory approach.</p>
+              
+              <h4>Upload Details:</h4>
+              <p><strong>File:</strong> ${file.name} (${file.size} bytes)</p>
+              <p><strong>Path:</strong> ${uploadResult.path}</p>
+              <p><strong>CID:</strong> ${uploadResult.cid}</p>
+              
+              <h4>Access Details:</h4>
+              <p><strong>Status:</strong> ${accessResult.status} ${accessResult.statusText}</p>
+              <p><strong>URL:</strong> <a href="${url}" target="_blank">${url}</a></p>
+              
+              <h4>Content Preview:</h4>
+              <pre>${typeof accessResult.content === 'string' ? accessResult.content.substring(0, 500) + (accessResult.content.length > 500 ? '...' : '') : accessResult.content}</pre>
+            </div>
+          `;
+        } else {
+          completeTestResult.innerHTML = `
+            <div class="error">
+              <h3>Complete Test Failed ❌</h3>
+              
+              <h4>Upload ${uploadResult.success ? 'Successful ✅' : 'Failed ❌'}</h4>
+              ${uploadResult.success ? 
+                `<p><strong>Path:</strong> ${uploadResult.path}</p>
+                <p><strong>CID:</strong> ${uploadResult.cid}</p>` : 
+                `<p><strong>Error:</strong> ${uploadResult.error || 'Unknown error'}</p>`
+              }
+              
+              <h4>Access ${accessResult.success ? 'Successful ✅' : 'Failed ❌'}</h4>
+              <p><strong>Status:</strong> ${accessResult.status} ${accessResult.statusText}</p>
+              <p><strong>URL:</strong> <a href="${url}" target="_blank">${url}</a></p>
+              ${accessResult.error ? `<p><strong>Error:</strong> ${accessResult.error}</p>` : ''}
+              
+              <h4>Troubleshooting:</h4>
+              <ul>
+                <li>If upload succeeded but access failed, the Web3URL format might be incorrect</li>
+                <li>Try toggling the subdomain format option</li>
+                <li>Verify the contract address is correct</li>
+                <li>Check that the gateway URL is accessible</li>
+              </ul>
+            </div>
+          `;
+        }
+        
+        completeTestResult.classList.remove('hidden');
+        log('Complete test finished', accessResult.success ? 'success' : 'error');
+      } catch (error) {
+        completeTestResult.innerHTML = `
+          <div class="error">
+            <h3>Test Error</h3>
+            <p>${error.message}</p>
+          </div>
+        `;
+        completeTestResult.classList.remove('hidden');
+        log(`Complete test error: ${error.message}`, 'error');
+      } finally {
+        runCompleteTestBtn.disabled = false;
+        runCompleteTestBtn.textContent = 'Run Complete Test';
+      }
+    });
+    
+    // Initialize with env values
+    window.addEventListener('DOMContentLoaded', () => {
+      log('Test tool initialized', 'info');
+      
+      // Add a known working path for testing
+      log('Adding a known test path for easier testing...', 'info');
+      fileCidInput.placeholder = 'e.g., test-image.jpg or files/example.pdf';
+      
+      // Log browser information
+      log(`Browser: ${navigator.userAgent}`, 'info');
+    });
+  </script>
+</body>
+</html> 

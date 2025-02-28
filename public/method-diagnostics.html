@@ -1,0 +1,645 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Web3URL Method Diagnostics</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+      margin: 0;
+      padding: 20px;
+      line-height: 1.6;
+      color: #333;
+      max-width: 800px;
+      margin: 0 auto;
+    }
+    h1, h2, h3 {
+      margin-top: 0;
+      color: #2563eb;
+    }
+    .card {
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 20px;
+      background-color: #f9fafb;
+    }
+    .input-group {
+      margin-bottom: 15px;
+    }
+    label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: 500;
+    }
+    input, textarea, select {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #d1d5db;
+      border-radius: 4px;
+      font-size: 16px;
+    }
+    button {
+      background-color: #2563eb;
+      color: white;
+      border: none;
+      padding: 10px 15px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 16px;
+      transition: background-color 0.2s;
+      margin-right: 8px;
+      margin-bottom: 8px;
+    }
+    button:hover {
+      background-color: #1d4ed8;
+    }
+    button:disabled {
+      background-color: #93c5fd;
+      cursor: not-allowed;
+    }
+    .result {
+      margin-top: 10px;
+      padding: 15px;
+      border-radius: 4px;
+    }
+    .success {
+      background-color: #ecfdf5;
+      border: 1px solid #10b981;
+      color: #065f46;
+    }
+    .error {
+      background-color: #fef2f2;
+      border: 1px solid #ef4444;
+      color: #991b1b;
+    }
+    .info {
+      background-color: #eff6ff;
+      border: 1px solid #3b82f6;
+      color: #1e40af;
+    }
+    .link-display {
+      word-break: break-all;
+      font-family: monospace;
+      margin: 10px 0;
+      padding: 10px;
+      background-color: #f3f4f6;
+      border-radius: 4px;
+    }
+    .logs {
+      font-family: monospace;
+      max-height: 300px;
+      overflow-y: auto;
+      padding: 10px;
+      background-color: #1e293b;
+      color: #f8fafc;
+      border-radius: 4px;
+      margin-top: 15px;
+    }
+    pre {
+      white-space: pre-wrap;
+      overflow-wrap: break-word;
+    }
+    .req-res-container {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-top: 15px;
+    }
+    .req-res-headers {
+      font-family: monospace;
+      font-size: 0.9em;
+      background-color: #f3f4f6;
+      padding: 10px;
+      border-radius: 4px;
+      max-height: 150px;
+      overflow-y: auto;
+    }
+    .known-path {
+      margin-top: 10px;
+      cursor: pointer;
+      font-family: monospace;
+      color: #2563eb;
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <h1>Web3URL Method Diagnostics</h1>
+  <p>This tool diagnoses the "400: Bad Request - Invalid method name" error by testing different HTTP methods and request formats against the EthStorage gateway.</p>
+  
+  <div class="card">
+    <h2>Configuration</h2>
+    
+    <div class="input-group">
+      <label for="contract-address">FlatDirectory Contract Address:</label>
+      <input type="text" id="contract-address" placeholder="0x..." value="0x64003adbdf3014f7E38FC6BE752EB047b95da89A">
+    </div>
+    
+    <div class="input-group">
+      <label for="gateway-url">EthStorage Gateway URL:</label>
+      <input type="text" id="gateway-url" placeholder="https://..." value="https://eth.sep.w3link.io">
+    </div>
+    
+    <div class="input-group">
+      <label for="file-path">File Path to Test:</label>
+      <input type="text" id="file-path" placeholder="e.g., files/document.pdf">
+    </div>
+    
+    <p><strong>Known Paths:</strong> Click one to use</p>
+    <div id="known-paths">
+      <div class="known-path" data-path="files/example.txt">files/example.txt</div>
+      <div class="known-path" data-path="test-uploads/sample.pdf">test-uploads/sample.pdf</div>
+      <div class="known-path" data-path="static/logo.png">static/logo.png</div>
+    </div>
+  </div>
+  
+  <div class="card">
+    <h2>Test Access Methods</h2>
+    
+    <h3>1. Direct URL Formats</h3>
+    <button id="test-subdomain-format">Test Subdomain Format</button>
+    <button id="test-path-format">Test Path Format</button>
+    <button id="test-ipfs-format">Test IPFS Format</button>
+    
+    <h3>2. HTTP Methods</h3>
+    <button id="test-get">Test GET</button>
+    <button id="test-head">Test HEAD</button>
+    <button id="test-options">Test OPTIONS</button>
+    
+    <h3>3. API Endpoints</h3>
+    <button id="test-api-cat">Test /api/v0/cat</button>
+    <button id="test-api-get">Test /api/v0/get</button>
+    
+    <div id="test-result" class="result hidden"></div>
+    
+    <div class="req-res-container">
+      <h3>Request/Response Details</h3>
+      <div id="req-headers" class="req-res-headers"></div>
+      <div id="res-headers" class="req-res-headers"></div>
+    </div>
+  </div>
+  
+  <div class="card">
+    <h2>Run Full Diagnostics</h2>
+    <p>This will test all combinations of formats and methods.</p>
+    
+    <button id="run-diagnostics">Run Full Diagnostics</button>
+    
+    <div id="full-diagnostics-result" class="result hidden"></div>
+    <div id="logs" class="logs"></div>
+  </div>
+  
+  <script>
+    // DOM Elements
+    const contractAddressInput = document.getElementById('contract-address');
+    const gatewayUrlInput = document.getElementById('gateway-url');
+    const filePathInput = document.getElementById('file-path');
+    const knownPathsDiv = document.getElementById('known-paths');
+    const testSubdomainFormatBtn = document.getElementById('test-subdomain-format');
+    const testPathFormatBtn = document.getElementById('test-path-format');
+    const testIpfsFormatBtn = document.getElementById('test-ipfs-format');
+    const testGetBtn = document.getElementById('test-get');
+    const testHeadBtn = document.getElementById('test-head');
+    const testOptionsBtn = document.getElementById('test-options');
+    const testApiCatBtn = document.getElementById('test-api-cat');
+    const testApiGetBtn = document.getElementById('test-api-get');
+    const testResultDiv = document.getElementById('test-result');
+    const reqHeadersDiv = document.getElementById('req-headers');
+    const resHeadersDiv = document.getElementById('res-headers');
+    const runDiagnosticsBtn = document.getElementById('run-diagnostics');
+    const fullDiagnosticsResultDiv = document.getElementById('full-diagnostics-result');
+    const logsDiv = document.getElementById('logs');
+    
+    // Log function
+    function log(message, type = 'info') {
+      const timestamp = new Date().toLocaleTimeString();
+      const logItem = document.createElement('div');
+      logItem.innerHTML = `<span style="color: ${type === 'error' ? '#ef4444' : type === 'success' ? '#10b981' : '#3b82f6'}">[${timestamp}]</span> ${message}`;
+      logsDiv.appendChild(logItem);
+      logsDiv.scrollTop = logsDiv.scrollHeight;
+      console.log(`[${timestamp}] ${message}`);
+    }
+    
+    // Format header object to string
+    function formatHeaders(headers) {
+      if (!headers) return 'No headers available';
+      
+      if (headers instanceof Headers) {
+        let result = '';
+        headers.forEach((value, key) => {
+          result += `${key}: ${value}\n`;
+        });
+        return result;
+      }
+      
+      return JSON.stringify(headers, null, 2);
+    }
+    
+    // Generate URLs
+    function generateUrls(path) {
+      const gatewayUrl = gatewayUrlInput.value.trim().replace(/\/$/, '');
+      const contractAddress = contractAddressInput.value.trim();
+      const contractAddressNoPrefix = contractAddress.toLowerCase().replace('0x', '');
+      
+      return {
+        subdomain: `${gatewayUrl.replace('eth.sep', `${contractAddressNoPrefix}.sep`)}/${path}`,
+        path: `${gatewayUrl}/ethereum:${contractAddress}/${path}`,
+        ipfs: path.startsWith('Qm') ? `${gatewayUrl}/ipfs/${path}` : null,
+        apiCat: `${gatewayUrl}/api/v0/cat?arg=${path}`,
+        apiGet: `${gatewayUrl}/api/v0/get?arg=${path}`
+      };
+    }
+    
+    // Test a specific URL with a specific method
+    async function testUrl(url, method = 'GET') {
+      log(`Testing ${method} ${url}`, 'info');
+      
+      try {
+        // Create headers object for tracking
+        const requestHeaders = new Headers();
+        requestHeaders.append('Accept', '*/*');
+        
+        // Fetch with the specified method
+        const response = await fetch(url, { 
+          method: method,
+          headers: requestHeaders,
+          mode: 'cors',
+          credentials: 'omit'
+        });
+        
+        // Display request and response headers
+        reqHeadersDiv.textContent = `${method} ${url}\n\n${formatHeaders(requestHeaders)}`;
+        
+        const responseHeaders = {};
+        response.headers.forEach((value, key) => {
+          responseHeaders[key] = value;
+        });
+        resHeadersDiv.textContent = `Status: ${response.status} ${response.statusText}\n\n${formatHeaders(response.headers)}`;
+        
+        if (response.ok) {
+          log(`✅ ${method} ${url} -> ${response.status} ${response.statusText}`, 'success');
+          
+          let content = '';
+          if (method === 'GET') {
+            try {
+              const contentType = response.headers.get('content-type');
+              if (contentType && contentType.includes('text')) {
+                content = await response.text();
+              } else if (contentType && contentType.includes('json')) {
+                const json = await response.json();
+                content = JSON.stringify(json, null, 2);
+              } else {
+                const blob = await response.blob();
+                content = `Binary content (${blob.size} bytes)`;
+              }
+            } catch (e) {
+              content = `Error reading response: ${e.message}`;
+            }
+          }
+          
+          return {
+            success: true,
+            status: response.status,
+            statusText: response.statusText,
+            headers: responseHeaders,
+            content: content,
+            url: url,
+            method: method
+          };
+        } else {
+          log(`❌ ${method} ${url} -> ${response.status} ${response.statusText}`, 'error');
+          
+          let errorContent = '';
+          try {
+            errorContent = await response.text();
+          } catch (e) {
+            errorContent = `Could not read error response: ${e.message}`;
+          }
+          
+          return {
+            success: false,
+            status: response.status,
+            statusText: response.statusText,
+            headers: responseHeaders,
+            error: errorContent,
+            url: url,
+            method: method
+          };
+        }
+      } catch (error) {
+        log(`❌ ${method} ${url} -> Network error: ${error.message}`, 'error');
+        
+        reqHeadersDiv.textContent = `${method} ${url}\n\nRequest failed before headers could be sent`;
+        resHeadersDiv.textContent = `Error: ${error.message}`;
+        
+        return {
+          success: false,
+          status: 'Error',
+          statusText: error.message,
+          error: error.message,
+          url: url,
+          method: method
+        };
+      }
+    }
+    
+    // Display test result
+    function displayTestResult(result) {
+      testResultDiv.innerHTML = '';
+      
+      const resultDiv = document.createElement('div');
+      resultDiv.className = result.success ? 'success' : 'error';
+      
+      const title = document.createElement('h3');
+      title.textContent = result.success ? 'Test Successful' : 'Test Failed';
+      resultDiv.appendChild(title);
+      
+      const methodUrlPara = document.createElement('p');
+      methodUrlPara.innerHTML = `<strong>${result.method}</strong> <a href="${result.url}" target="_blank">${result.url}</a>`;
+      resultDiv.appendChild(methodUrlPara);
+      
+      const statusPara = document.createElement('p');
+      statusPara.innerHTML = `<strong>Status:</strong> ${result.status} ${result.statusText}`;
+      resultDiv.appendChild(statusPara);
+      
+      if (result.success && result.content) {
+        const contentHeader = document.createElement('h4');
+        contentHeader.textContent = 'Response Preview:';
+        resultDiv.appendChild(contentHeader);
+        
+        const contentPre = document.createElement('pre');
+        contentPre.textContent = typeof result.content === 'string' 
+          ? result.content.substring(0, 500) + (result.content.length > 500 ? '...' : '') 
+          : result.content;
+        resultDiv.appendChild(contentPre);
+      } else if (!result.success) {
+        const errorPara = document.createElement('p');
+        errorPara.innerHTML = `<strong>Error:</strong> ${result.error || 'Unknown error'}`;
+        resultDiv.appendChild(errorPara);
+        
+        // Add potential fix suggestions based on the error
+        if (result.error && result.error.includes('Invalid method name')) {
+          const fixHeader = document.createElement('h4');
+          fixHeader.textContent = 'Potential Fixes:';
+          resultDiv.appendChild(fixHeader);
+          
+          const fixList = document.createElement('ul');
+          fixList.innerHTML = `
+            <li>The "Invalid method name" error typically occurs when the API endpoint expects a specific method that wasn't provided</li>
+            <li>Try using a different URL format (subdomain vs path format)</li>
+            <li>Ensure the contract address is correct and the file exists at the specified path</li>
+            <li>Try accessing through standard HTTP GET rather than API endpoints</li>
+          `;
+          resultDiv.appendChild(fixList);
+        }
+      }
+      
+      testResultDiv.appendChild(resultDiv);
+      testResultDiv.classList.remove('hidden');
+    }
+    
+    // Run comprehensive diagnostics
+    async function runFullDiagnostics() {
+      const path = filePathInput.value.trim();
+      if (!path) {
+        alert('Please enter a file path to test');
+        return;
+      }
+      
+      runDiagnosticsBtn.disabled = true;
+      runDiagnosticsBtn.textContent = 'Running diagnostics...';
+      fullDiagnosticsResultDiv.classList.add('hidden');
+      
+      log('Starting full diagnostics...', 'info');
+      
+      const urls = generateUrls(path);
+      const methods = ['GET', 'HEAD', 'OPTIONS'];
+      
+      const results = [];
+      
+      // Test all URL formats with all methods
+      for (const [formatName, url] of Object.entries(urls)) {
+        if (!url) continue;
+        
+        for (const method of methods) {
+          log(`Testing ${formatName} format with ${method} method...`, 'info');
+          const result = await testUrl(url, method);
+          results.push({
+            formatName,
+            ...result
+          });
+        }
+      }
+      
+      // Display results
+      fullDiagnosticsResultDiv.innerHTML = '';
+      
+      const summary = document.createElement('div');
+      const successCount = results.filter(r => r.success).length;
+      summary.className = successCount > 0 ? 'success' : 'error';
+      summary.innerHTML = `
+        <h3>Diagnostics Summary</h3>
+        <p>${successCount} of ${results.length} tests passed</p>
+      `;
+      fullDiagnosticsResultDiv.appendChild(summary);
+      
+      // Group results by format
+      const formatGroups = {};
+      for (const result of results) {
+        if (!formatGroups[result.formatName]) {
+          formatGroups[result.formatName] = [];
+        }
+        formatGroups[result.formatName].push(result);
+      }
+      
+      // Display results by format
+      for (const [formatName, formatResults] of Object.entries(formatGroups)) {
+        const formatDiv = document.createElement('div');
+        formatDiv.className = 'card';
+        formatDiv.style.marginTop = '15px';
+        
+        const formatTitle = document.createElement('h3');
+        formatTitle.textContent = `${formatName} Format`;
+        formatDiv.appendChild(formatTitle);
+        
+        for (const result of formatResults) {
+          const resultDiv = document.createElement('div');
+          resultDiv.className = result.success ? 'success' : 'error';
+          resultDiv.style.marginBottom = '10px';
+          resultDiv.style.padding = '10px';
+          
+          resultDiv.innerHTML = `
+            <p><strong>${result.method}</strong> ${result.success ? '✅' : '❌'}</p>
+            <p><strong>Status:</strong> ${result.status} ${result.statusText}</p>
+            <p><strong>URL:</strong> <a href="${result.url}" target="_blank">${result.url}</a></p>
+          `;
+          
+          formatDiv.appendChild(resultDiv);
+        }
+        
+        fullDiagnosticsResultDiv.appendChild(formatDiv);
+      }
+      
+      // Add analysis
+      const analysis = document.createElement('div');
+      analysis.className = 'card';
+      analysis.style.marginTop = '15px';
+      
+      let analysisContent = '<h3>Analysis</h3>';
+      
+      if (successCount > 0) {
+        const workingFormats = [...new Set(results.filter(r => r.success).map(r => r.formatName))];
+        analysisContent += `<p>Working URL formats: ${workingFormats.join(', ')}</p>`;
+        
+        const bestResult = results.filter(r => r.success)[0];
+        analysisContent += `<div class="link-display"><a href="${bestResult.url}" target="_blank">${bestResult.url}</a></div>`;
+        analysisContent += '<p>Copy this link - it should work in your application</p>';
+      } else {
+        analysisContent += '<p>No working formats were found. Potential issues:</p>';
+        analysisContent += `
+          <ul>
+            <li>The file path "${path}" may not exist in the contract</li>
+            <li>The contract address may be incorrect</li>
+            <li>The EthStorage gateway may be experiencing issues</li>
+            <li>There may be CORS restrictions preventing access</li>
+          </ul>
+        `;
+        
+        // Look for specific errors
+        const invalidMethodResults = results.filter(r => r.error && r.error.includes('Invalid method name'));
+        if (invalidMethodResults.length > 0) {
+          analysisContent += '<p><strong>Invalid method name errors:</strong> This typically occurs when trying to use API endpoints with incorrect parameters. Try using standard HTTP URLs instead.</p>';
+        }
+      }
+      
+      analysis.innerHTML = analysisContent;
+      fullDiagnosticsResultDiv.appendChild(analysis);
+      
+      fullDiagnosticsResultDiv.classList.remove('hidden');
+      runDiagnosticsBtn.disabled = false;
+      runDiagnosticsBtn.textContent = 'Run Full Diagnostics';
+      
+      log('Full diagnostics completed', 'success');
+    }
+    
+    // Event listeners for buttons
+    testSubdomainFormatBtn.addEventListener('click', async () => {
+      const path = filePathInput.value.trim();
+      if (!path) {
+        alert('Please enter a file path to test');
+        return;
+      }
+      
+      const urls = generateUrls(path);
+      const result = await testUrl(urls.subdomain, 'GET');
+      displayTestResult(result);
+    });
+    
+    testPathFormatBtn.addEventListener('click', async () => {
+      const path = filePathInput.value.trim();
+      if (!path) {
+        alert('Please enter a file path to test');
+        return;
+      }
+      
+      const urls = generateUrls(path);
+      const result = await testUrl(urls.path, 'GET');
+      displayTestResult(result);
+    });
+    
+    testIpfsFormatBtn.addEventListener('click', async () => {
+      const path = filePathInput.value.trim();
+      if (!path) {
+        alert('Please enter a file path to test');
+        return;
+      }
+      
+      const urls = generateUrls(path);
+      if (!urls.ipfs) {
+        alert('IPFS format only works with CIDs starting with "Qm"');
+        return;
+      }
+      
+      const result = await testUrl(urls.ipfs, 'GET');
+      displayTestResult(result);
+    });
+    
+    testGetBtn.addEventListener('click', async () => {
+      const path = filePathInput.value.trim();
+      if (!path) {
+        alert('Please enter a file path to test');
+        return;
+      }
+      
+      const urls = generateUrls(path);
+      const result = await testUrl(urls.subdomain, 'GET');
+      displayTestResult(result);
+    });
+    
+    testHeadBtn.addEventListener('click', async () => {
+      const path = filePathInput.value.trim();
+      if (!path) {
+        alert('Please enter a file path to test');
+        return;
+      }
+      
+      const urls = generateUrls(path);
+      const result = await testUrl(urls.subdomain, 'HEAD');
+      displayTestResult(result);
+    });
+    
+    testOptionsBtn.addEventListener('click', async () => {
+      const path = filePathInput.value.trim();
+      if (!path) {
+        alert('Please enter a file path to test');
+        return;
+      }
+      
+      const urls = generateUrls(path);
+      const result = await testUrl(urls.subdomain, 'OPTIONS');
+      displayTestResult(result);
+    });
+    
+    testApiCatBtn.addEventListener('click', async () => {
+      const path = filePathInput.value.trim();
+      if (!path) {
+        alert('Please enter a file path to test');
+        return;
+      }
+      
+      const urls = generateUrls(path);
+      const result = await testUrl(urls.apiCat, 'GET');
+      displayTestResult(result);
+    });
+    
+    testApiGetBtn.addEventListener('click', async () => {
+      const path = filePathInput.value.trim();
+      if (!path) {
+        alert('Please enter a file path to test');
+        return;
+      }
+      
+      const urls = generateUrls(path);
+      const result = await testUrl(urls.apiGet, 'GET');
+      displayTestResult(result);
+    });
+    
+    runDiagnosticsBtn.addEventListener('click', runFullDiagnostics);
+    
+    // Known paths click handler
+    knownPathsDiv.addEventListener('click', (event) => {
+      if (event.target.classList.contains('known-path')) {
+        filePathInput.value = event.target.dataset.path;
+      }
+    });
+    
+    // Initialize
+    window.addEventListener('DOMContentLoaded', () => {
+      log('Method diagnostics tool initialized', 'info');
+      log('Enter a file path and run tests to diagnose Web3URL access issues', 'info');
+    });
+  </script>
+</body>
+</html> 

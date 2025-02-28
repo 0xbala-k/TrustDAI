@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TrustDAI - Web3 Link Tester</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+      margin: 0;
+      padding: 20px;
+      line-height: 1.6;
+      color: #333;
+      max-width: 800px;
+      margin: 0 auto;
+    }
+    h1 {
+      margin-top: 0;
+      color: #2563eb;
+    }
+    .card {
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 20px;
+      background-color: #f9fafb;
+    }
+    .input-group {
+      margin-bottom: 15px;
+    }
+    label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: 500;
+    }
+    input {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #d1d5db;
+      border-radius: 4px;
+      font-size: 16px;
+    }
+    button {
+      background-color: #2563eb;
+      color: white;
+      border: none;
+      padding: 10px 15px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 16px;
+      transition: background-color 0.2s;
+    }
+    button:hover {
+      background-color: #1d4ed8;
+    }
+    .result {
+      margin-top: 20px;
+      padding: 15px;
+      border-radius: 4px;
+    }
+    .success {
+      background-color: #ecfdf5;
+      border: 1px solid #10b981;
+      color: #065f46;
+    }
+    .error {
+      background-color: #fef2f2;
+      border: 1px solid #ef4444;
+      color: #991b1b;
+    }
+    .link-display {
+      word-break: break-all;
+      font-family: monospace;
+      margin: 10px 0;
+      padding: 10px;
+      background-color: #f3f4f6;
+      border-radius: 4px;
+    }
+    .hidden {
+      display: none;
+    }
+    .tabs {
+      display: flex;
+      border-bottom: 1px solid #e5e7eb;
+      margin-bottom: 20px;
+    }
+    .tab {
+      padding: 10px 15px;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+    }
+    .tab.active {
+      border-bottom-color: #2563eb;
+      color: #2563eb;
+      font-weight: 500;
+    }
+    .tab-content {
+      display: none;
+    }
+    .tab-content.active {
+      display: block;
+    }
+    .toggle-group {
+      display: flex;
+      align-items: center;
+      margin-bottom: 15px;
+    }
+    .toggle-label {
+      margin-right: 10px;
+    }
+    .toggle {
+      position: relative;
+      display: inline-block;
+      width: 60px;
+      height: 30px;
+    }
+    .toggle input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: #ccc;
+      transition: .4s;
+      border-radius: 30px;
+    }
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 22px;
+      width: 22px;
+      left: 4px;
+      bottom: 4px;
+      background-color: white;
+      transition: .4s;
+      border-radius: 50%;
+    }
+    input:checked + .slider {
+      background-color: #2563eb;
+    }
+    input:checked + .slider:before {
+      transform: translateX(30px);
+    }
+  </style>
+</head>
+<body>
+  <h1>TrustDAI Web3 Link Tester</h1>
+  
+  <div class="tabs">
+    <div class="tab active" data-tab="cid">CID/Path Format</div>
+    <div class="tab" data-tab="web3url">Web3URL Format</div>
+    <div class="tab" data-tab="diagnostics">Diagnostics</div>
+  </div>
+  
+  <div class="tab-content active" id="cid-tab">
+    <div class="card">
+      <h2>Test EthStorage Links</h2>
+      <p>Use this utility to test if your EthStorage links are formatted correctly. Enter a CID or file path and see the properly formatted link.</p>
+      
+      <div class="toggle-group">
+        <span class="toggle-label">Use FlatDirectory:</span>
+        <label class="toggle">
+          <input type="checkbox" id="use-flat-directory">
+          <span class="slider"></span>
+        </label>
+      </div>
+      
+      <div id="flat-directory-config" class="hidden">
+        <div class="input-group">
+          <label for="contract-address">FlatDirectory Contract Address:</label>
+          <input type="text" id="contract-address" placeholder="0x..." value="">
+        </div>
+        
+        <div class="toggle-group">
+          <span class="toggle-label">Use Subdomain Format:</span>
+          <label class="toggle">
+            <input type="checkbox" id="use-subdomain-format">
+            <span class="slider"></span>
+          </label>
+          <small style="margin-left: 10px;">(e.g., https://[contractaddress].sep.w3link.io/path)</small>
+        </div>
+      </div>
+      
+      <div class="input-group">
+        <label for="cid-input">Content Identifier (CID) or File Path:</label>
+        <input type="text" id="cid-input" placeholder="e.g., QmA1B2C3D4... or files/myfile.txt" value="">
+      </div>
+      
+      <div class="input-group" id="filename-group">
+        <label for="filename-input">Filename (optional):</label>
+        <input type="text" id="filename-input" placeholder="e.g., document.pdf" value="">
+      </div>
+      
+      <button id="format-btn">Format Link</button>
+      <button id="test-btn">Test Link</button>
+      
+      <div id="result-container" class="result hidden">
+        <h3>Formatted Link:</h3>
+        <div id="link-display" class="link-display"></div>
+        <p id="result-message"></p>
+      </div>
+    </div>
+  </div>
+  
+  <div class="tab-content" id="web3url-tab">
+    <div class="card">
+      <h2>Web3URL Builder</h2>
+      <p>Build a Web3URL using the proper format for EthStorage and FlatDirectory.</p>
+      
+      <div class="input-group">
+        <label for="protocol-input">Protocol:</label>
+        <select id="protocol-input">
+          <option value="web3">web3://</option>
+          <option value="https" selected>https://</option>
+        </select>
+      </div>
+      
+      <div class="input-group">
+        <label for="gateway-input">Gateway (for HTTPS):</label>
+        <input type="text" id="gateway-input" value="eth.sep.w3link.io/" placeholder="e.g., eth.sep.w3link.io/">
+      </div>
+      
+      <div class="input-group">
+        <label for="domain-input">Domain/ENS name:</label>
+        <input type="text" id="domain-input" placeholder="e.g., yourname.eth or ethereum:0x123...">
+      </div>
+      
+      <div class="input-group">
+        <label for="path-input">Path:</label>
+        <input type="text" id="path-input" placeholder="e.g., files/document.txt">
+      </div>
+      
+      <button id="build-web3url-btn">Build Web3URL</button>
+      
+      <div id="web3url-result" class="result hidden">
+        <h3>Generated Web3URL:</h3>
+        <div id="web3url-display" class="link-display"></div>
+        <p id="web3url-message"></p>
+      </div>
+    </div>
+  </div>
+  
+  <div class="tab-content" id="diagnostics-tab">
+    <div class="card">
+      <h2>Link Diagnostics</h2>
+      <p>Test different formats and configurations to diagnose link issues.</p>
+      
+      <div class="input-group">
+        <label for="diag-cid-input">CID or Path to diagnose:</label>
+        <input type="text" id="diag-cid-input" placeholder="e.g., QmA1B2C3D4... or files/myfile.txt" value="">
+      </div>
+      
+      <button id="run-diagnostics-btn">Run Diagnostics</button>
+      
+      <div id="diagnostics-result" class="result hidden">
+        <h3>Diagnostic Results:</h3>
+        <div id="diagnostics-display" class="link-display"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Common Issues & Solutions</h2>
+    <ul>
+      <li><strong>400 Bad Request Error:</strong> Make sure you're using the correct URL format:
+        <ul>
+          <li>For IPFS CIDs: <code>https://eth.sep.w3link.io/ipfs/{CID}</code></li>
+          <li>For FlatDirectory: <code>https://eth.sep.w3link.io/ethereum:{CONTRACT_ADDRESS}/{PATH}</code></li>
+          <li>For ENS names: <code>https://eth.sep.w3link.io/{ENS_NAME}/{PATH}</code></li>
+        </ul>
+      </li>
+      <li><strong>404 Not Found Error:</strong> The file may not exist, or you might be using an incorrect path.</li>
+      <li><strong>CORS Issues:</strong> Some browsers may block access to EthStorage due to CORS policies.</li>
+    </ul>
+  </div>
+  
+  <script>
+    // Get DOM elements
+    const cidInput = document.getElementById('cid-input');
+    const filenameInput = document.getElementById('filename-input');
+    const contractAddressInput = document.getElementById('contract-address');
+    const useFlatDirectoryToggle = document.getElementById('use-flat-directory');
+    const flatDirectoryConfig = document.getElementById('flat-directory-config');
+    const formatBtn = document.getElementById('format-btn');
+    const testBtn = document.getElementById('test-btn');
+    const resultContainer = document.getElementById('result-container');
+    const linkDisplay = document.getElementById('link-display');
+    const resultMessage = document.getElementById('result-message');
+    
+    // Web3URL builder elements
+    const protocolInput = document.getElementById('protocol-input');
+    const gatewayInput = document.getElementById('gateway-input');
+    const domainInput = document.getElementById('domain-input');
+    const pathInput = document.getElementById('path-input');
+    const buildWeb3urlBtn = document.getElementById('build-web3url-btn');
+    const web3urlResult = document.getElementById('web3url-result');
+    const web3urlDisplay = document.getElementById('web3url-display');
+    const web3urlMessage = document.getElementById('web3url-message');
+    
+    // Diagnostics elements
+    const diagCidInput = document.getElementById('diag-cid-input');
+    const runDiagnosticsBtn = document.getElementById('run-diagnostics-btn');
+    const diagnosticsResult = document.getElementById('diagnostics-result');
+    const diagnosticsDisplay = document.getElementById('diagnostics-display');
+    
+    // Tab navigation
+    const tabs = document.querySelectorAll('.tab');
+    const tabContents = document.querySelectorAll('.tab-content');
+    
+    tabs.forEach(tab => {
+      tab.addEventListener('click', () => {
+        const tabId = tab.getAttribute('data-tab');
+        
+        // Update active tab
+        tabs.forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        
+        // Show corresponding content
+        tabContents.forEach(content => {
+          content.classList.remove('active');
+          if (content.id === `${tabId}-tab`) {
+            content.classList.add('active');
+          }
+        });
+      });
+    });
+    
+    // Toggle FlatDirectory config visibility
+    useFlatDirectoryToggle.addEventListener('change', () => {
+      if (useFlatDirectoryToggle.checked) {
+        flatDirectoryConfig.classList.remove('hidden');
+      } else {
+        flatDirectoryConfig.classList.add('hidden');
+      }
+    });
+
+    // Function to format web3 links based on the selected options
+    function getShareableUrl(cid, filename) {
+      if (!cid) return '';
+      
+      // Get EthStorage endpoint
+      const ethStorageEndpoint = 'https://eth.sep.w3link.io';
+      
+      // Create file path - use filename if provided, otherwise use CID as filename
+      const filePath = filename || cid;
+      
+      // If using FlatDirectory
+      if (useFlatDirectoryToggle.checked && contractAddressInput.value) {
+        const contractAddress = contractAddressInput.value;
+        
+        // Check if subdomain format is requested
+        const useSubdomainFormat = document.getElementById('use-subdomain-format')?.checked || false;
+        
+        if (useSubdomainFormat) {
+          // Create subdomain format URL: https://[contractAddress].sep.w3link.io/[path]
+          // Remove 0x prefix and convert to lowercase
+          const contractSub = contractAddress.toLowerCase().replace('0x', '');
+          return `https://${contractSub}.sep.w3link.io/${filePath}`;
+        } else {
+          // Use standard format with ethereum: prefix
+          return `${ethStorageEndpoint}/ethereum:${contractAddress}/${filePath}`;
+        }
+      }
+      
+      // For backward compatibility with CIDs
+      if (cid.startsWith('Qm')) {
+        return `${ethStorageEndpoint}/ipfs/${cid}`;
+      }
+      
+      // Handle file paths (if it contains a slash, assume it's a path)
+      if (cid.includes('/')) {
+        if (contractAddressInput.value) {
+          return `${ethStorageEndpoint}/ethereum:${contractAddressInput.value}/${cid}`;
+        }
+        return `${ethStorageEndpoint}/${cid}`;
+      }
+      
+      // Default fallback - direct endpoint with CID
+      return `${ethStorageEndpoint}/${cid}`;
+    }
+
+    // Function to test if a URL is accessible
+    async function testUrl(url) {
+      try {
+        const response = await fetch(url, { method: 'HEAD' });
+        return {
+          success: response.ok,
+          status: response.status,
+          statusText: response.statusText
+        };
+      } catch (error) {
+        return {
+          success: false,
+          status: 'Error',
+          statusText: error.message
+        };
+      }
+    }
+    
+    // Function to run diagnostics on a URL
+    async function diagnoseLinkIssue(cid) {
+      // Try different formats to see which one works
+      const contractAddress = contractAddressInput.value || '0x64003adbdf3014f7E38FC6BE752EB047b95da89A'; // Default or user-provided
+      const gateway = 'https://eth.sep.w3link.io';
+      const contractWithoutPrefix = contractAddress.toLowerCase().replace('0x', '');
+      
+      const formats = [
+        // IPFS formats
+        `${gateway}/ipfs/${cid}`,
+        `${gateway}/${cid}`,
+        
+        // FlatDirectory formats with ethereum: prefix
+        `${gateway}/ethereum:${contractAddress}/${cid}`,
+        `${gateway}/ethereum:${contractAddress}/files/${cid}`,
+        
+        // Subdomain format
+        `https://${contractWithoutPrefix}.sep.w3link.io/${cid}`,
+        `https://${contractWithoutPrefix}.sep.w3link.io/files/${cid}`,
+        
+        // API formats
+        `${gateway}/api/v0/cat?arg=${cid}`,
+        `${gateway}/api/v0/get?arg=${cid}`
+      ];
+      
+      const results = [];
+      for (const url of formats) {
+        try {
+          const response = await fetch(url, { method: 'HEAD' });
+          results.push({
+            url,
+            status: response.status,
+            success: response.ok
+          });
+        } catch (error) {
+          results.push({
+            url, 
+            status: 'Error',
+            success: false,
+            error: error.message
+          });
+        }
+      }
+      
+      return results;
+    }
+
+    // Format button click handler
+    formatBtn.addEventListener('click', () => {
+      const cid = cidInput.value.trim();
+      const filename = filenameInput.value.trim();
+      
+      if (!cid) {
+        alert('Please enter a CID or file path');
+        return;
+      }
+
+      const formattedUrl = getShareableUrl(cid, filename);
+      
+      // Display the result
+      linkDisplay.textContent = formattedUrl;
+      linkDisplay.innerHTML = `<a href="${formattedUrl}" target="_blank">${formattedUrl}</a>`;
+      resultMessage.textContent = 'Link formatted successfully. Click to open in a new tab.';
+      resultContainer.classList.remove('hidden', 'error');
+      resultContainer.classList.add('success');
+    });
+
+    // Test button click handler
+    testBtn.addEventListener('click', async () => {
+      const cid = cidInput.value.trim();
+      const filename = filenameInput.value.trim();
+      
+      if (!cid) {
+        alert('Please enter a CID or file path');
+        return;
+      }
+
+      // Show loading state
+      testBtn.textContent = 'Testing...';
+      testBtn.disabled = true;
+      
+      const formattedUrl = getShareableUrl(cid, filename);
+      linkDisplay.textContent = formattedUrl;
+      
+      // Test the URL
+      const result = await testUrl(formattedUrl);
+      
+      // Display the result
+      if (result.success) {
+        resultMessage.textContent = `Link is working! Status: ${result.status} ${result.statusText}`;
+        resultContainer.classList.remove('hidden', 'error');
+        resultContainer.classList.add('success');
+        linkDisplay.innerHTML = `<a href="${formattedUrl}" target="_blank">${formattedUrl}</a>`;
+      } else {
+        resultMessage.textContent = `Error accessing link. Status: ${result.status} ${result.statusText}`;
+        resultContainer.classList.remove('hidden', 'success');
+        resultContainer.classList.add('error');
+        
+        // Suggest fix based on common issues
+        if (result.status === 400) {
+          resultMessage.textContent += '. This is likely due to incorrect CID or path formatting.';
+        } else if (result.status === 404) {
+          resultMessage.textContent += '. The file may not exist or has been removed.';
+        }
+      }
+      
+      // Reset button state
+      testBtn.textContent = 'Test Link';
+      testBtn.disabled = false;
+    });
+    
+    // Web3URL Builder button handler
+    buildWeb3urlBtn.addEventListener('click', () => {
+      const protocol = protocolInput.value;
+      const gateway = gatewayInput.value;
+      const domain = domainInput.value.trim();
+      const path = pathInput.value.trim();
+      
+      if (!domain) {
+        alert('Please enter a domain or Ethereum address');
+        return;
+      }
+      
+      // Build the Web3URL
+      let url = '';
+      if (protocol === 'web3') {
+        // Native web3:// URL
+        url = `web3://${domain}/${path}`;
+      } else {
+        // HTTPS gateway URL
+        // Ensure gateway ends with slash
+        const formattedGateway = gateway.endsWith('/') ? gateway : `${gateway}/`;
+        
+        // Check if domain is ethereum address or ENS name
+        if (domain.startsWith('ethereum:') || domain.startsWith('0x')) {
+          // It's an Ethereum address
+          const ethAddress = domain.startsWith('ethereum:') ? domain : `ethereum:${domain}`;
+          url = `https://${formattedGateway}${ethAddress}/${path}`;
+        } else {
+          // It's likely an ENS name
+          url = `https://${formattedGateway}${domain}/${path}`;
+        }
+      }
+      
+      // Display the result
+      web3urlDisplay.textContent = url;
+      web3urlDisplay.innerHTML = `<a href="${url}" target="_blank">${url}</a>`;
+      web3urlMessage.textContent = 'Web3URL built successfully. Click to open in a new tab.';
+      web3urlResult.classList.remove('hidden', 'error');
+      web3urlResult.classList.add('success');
+    });
+    
+    // Diagnostics button handler
+    runDiagnosticsBtn.addEventListener('click', async () => {
+      const cid = diagCidInput.value.trim();
+      
+      if (!cid) {
+        alert('Please enter a CID or path to diagnose');
+        return;
+      }
+      
+      // Show loading state
+      runDiagnosticsBtn.textContent = 'Running Diagnostics...';
+      runDiagnosticsBtn.disabled = true;
+      
+      // Run diagnostics
+      const results = await diagnoseLinkIssue(cid);
+      
+      // Format the results
+      let resultsHtml = '<table style="width:100%; border-collapse: collapse;">';
+      resultsHtml += '<tr><th style="text-align:left; padding:8px; border-bottom:1px solid #ddd;">URL</th><th style="text-align:center; padding:8px; border-bottom:1px solid #ddd;">Status</th></tr>';
+      
+      results.forEach(result => {
+        const statusStyle = result.success ? 'color:green;' : 'color:red;';
+        resultsHtml += `<tr>
+          <td style="padding:8px; border-bottom:1px solid #ddd;"><a href="${result.url}" target="_blank">${result.url}</a></td>
+          <td style="text-align:center; padding:8px; border-bottom:1px solid #ddd; ${statusStyle}">${result.status} ${result.error || ''}</td>
+        </tr>`;
+      });
+      
+      resultsHtml += '</table>';
+      
+      // Add recommendation
+      const workingFormats = results.filter(r => r.success);
+      if (workingFormats.length > 0) {
+        resultsHtml += `<p style="margin-top:15px;"><strong>Recommended format:</strong> <a href="${workingFormats[0].url}" target="_blank">${workingFormats[0].url}</a></p>`;
+      } else {
+        resultsHtml += `<p style="margin-top:15px;"><strong>No working formats found.</strong> Please check that your CID/path is correct and that the file exists.</p>`;
+      }
+      
+      // Display the results
+      diagnosticsDisplay.innerHTML = resultsHtml;
+      diagnosticsResult.classList.remove('hidden');
+      
+      // Reset button state
+      runDiagnosticsBtn.textContent = 'Run Diagnostics';
+      runDiagnosticsBtn.disabled = false;
+    });
+
+    // Prepopulate with URL parameter if available
+    const urlParams = new URLSearchParams(window.location.search);
+    const cidParam = urlParams.get('cid');
+    if (cidParam) {
+      cidInput.value = cidParam;
+      formatBtn.click();
+    }
+  </script>
+</body>
+</html> 

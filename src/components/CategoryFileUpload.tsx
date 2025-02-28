@@ -26,7 +26,8 @@ import { Switch } from './ui/switch';
 import { Loader2, Upload, Link2, FileText, Info } from 'lucide-react';
 import { useFeatureFlags } from './FeatureToggle';
 import { useWallet } from '../contexts/WalletContext';
-import { truncateAddress } from '../utils/formatters';
+import { truncateAddress, formatWeb3Link, getShareableUrl, openWeb3Link } from '../utils/formatters';
+import { toast } from './ui/use-toast';
 
 // Define the data categories
 export const DATA_CATEGORIES = [
@@ -125,6 +126,54 @@ interface CategoryFileUploadProps {
   onUpload: (data: any, prices: Record<string, string>) => Promise<string>;
 }
 
+// Add this function to generate mock data for testing
+function generateMockDataForCategory(categoryId: string): Record<string, string> {
+  switch (categoryId) {
+    case 'personal_info':
+      return {
+        name: 'Jane Smith',
+        dateOfBirth: '1985-06-15',
+        gender: 'Female',
+        occupation: 'Software Engineer',
+        bio: 'Passionate about blockchain technology and personal data privacy. Enjoys hiking and reading sci-fi novels in spare time.'
+      };
+    case 'addresses':
+      return {
+        street: '123 Blockchain Avenue',
+        city: 'Decentraland',
+        state: 'CA',
+        postalCode: '94103',
+        country: 'United States'
+      };
+    case 'interests':
+      return {
+        hobbies: 'Hiking, Reading, Blockchain Development, Photography',
+        cuisines: 'Italian, Japanese, Indian',
+        musicGenres: 'Electronic, Jazz, Classical',
+        entertainment: 'Sci-fi movies, Historical documentaries',
+        notes: 'Particularly interested in privacy-preserving technologies and their applications.'
+      };
+    case 'travel':
+      return {
+        visitedCountries: 'Japan, Spain, Australia, Canada, Italy',
+        favoriteDestinations: 'Kyoto, Barcelona, Sydney',
+        accommodation: 'Boutique hotels, Local homestays',
+        transportation: 'Train, Shared rides',
+        notes: 'Enjoys cultural immersion experiences and off-the-beaten-path destinations.'
+      };
+    case 'purchasing_habits':
+      return {
+        preferredShopping: 'Online via secure websites',
+        paymentMethods: 'Cryptocurrency, Credit card',
+        frequentCategories: 'Technology, Books, Outdoor gear',
+        brandPreferences: 'Privacy-focused companies, Sustainable brands',
+        notes: 'Values privacy, sustainability, and quality when making purchasing decisions.'
+      };
+    default:
+      return {};
+  }
+}
+
 const CategoryFileUpload: React.FC<CategoryFileUploadProps> = ({ onUpload }) => {
   const { features } = useFeatureFlags();
   const { isConnected, networkName } = useWallet();
@@ -134,6 +183,7 @@ const CategoryFileUpload: React.FC<CategoryFileUploadProps> = ({ onUpload }) => 
   );
   const [isUploading, setIsUploading] = useState(false);
   const [uploadedCid, setUploadedCid] = useState<string | null>(null);
+  const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<string>('categories');
   const [isOpen, setIsOpen] = useState(false);
 
@@ -194,44 +244,59 @@ const CategoryFileUpload: React.FC<CategoryFileUploadProps> = ({ onUpload }) => 
     try {
       setIsUploading(true);
       
-      // Collect data from selected categories
-      const dataToUpload: Record<string, any> = {};
-      const prices: Record<string, string> = {};
+      // Filter out disabled categories and extract prices
+      const enabledCategories = selectedCategories
+        .filter(cat => cat.enabled)
+        .reduce((acc: Record<string, any>, cat) => {
+          acc[cat.id] = formValues[cat.id];
+          return acc;
+        }, {});
       
-      selectedCategories.forEach(cat => {
-        if (cat.enabled) {
-          dataToUpload[cat.id] = formValues[cat.id];
-          prices[cat.id] = cat.price;
-        }
-      });
+      const categoryPrices = selectedCategories
+        .filter(cat => cat.enabled)
+        .reduce((acc: Record<string, string>, cat) => {
+          acc[cat.id] = cat.price;
+          return acc;
+        }, {});
       
-      // Add metadata
-      const metadata = {
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        isEncrypted: features.litProtocol,
-        categories: selectedCategories
-          .filter(cat => cat.enabled)
-          .map(cat => ({ id: cat.id, price: cat.price }))
-      };
+      // Generate a filename based on the data being uploaded
+      const timestamp = new Date().toISOString().replace(/[:.-]/g, '');
+      const fileName = `trustdai_data_${timestamp}.json`;
+      setUploadedFileName(fileName);
       
-      dataToUpload.metadata = metadata;
-      
-      // Upload to blockchain
-      const cid = await onUpload(dataToUpload, prices);
+      // Call the onUpload callback
+      const cid = await onUpload(enabledCategories, categoryPrices);
       setUploadedCid(cid);
       setActiveTab('result');
       
     } catch (error) {
-      console.error('Upload error:', error);
+      console.error("Error uploading data:", error);
+      toast({
+        title: "Upload Failed",
+        description: "There was an error uploading your data. Please try again.",
+        variant: "destructive"
+      });
     } finally {
       setIsUploading(false);
     }
   };
 
-  // Format Web3 link
-  const formatWeb3Link = (cid: string) => {
-    return `trustdai://${cid.substring(0, 8)}`;
+  // Add a new function to handle mock data generation for testing
+  const handleGenerateMockData = (categoryId: string) => {
+    if (!isConnected) return;
+    
+    const mockData = generateMockDataForCategory(categoryId);
+    
+    // Update form values with mock data
+    setFormValues(prev => ({
+      ...prev,
+      [categoryId]: {
+        ...prev[categoryId],
+        ...mockData
+      }
+    }));
+    
+    console.log(`Generated mock data for ${categoryId}`);
   };
 
   return (
@@ -338,7 +403,18 @@ const CategoryFileUpload: React.FC<CategoryFileUploadProps> = ({ onUpload }) => 
                 return (
                   <Card key={category.id} className="mb-4">
                     <CardHeader className={`${category.color}`}>
-                      <CardTitle className="text-lg">{category.name}</CardTitle>
+                      <div className="flex justify-between items-center">
+                        <CardTitle className="text-lg">{category.name}</CardTitle>
+                        <Button 
+                          type="button" 
+                          size="sm" 
+                          variant="outline" 
+                          onClick={() => handleGenerateMockData(category.id)}
+                          className="border-slate-300 bg-white/50 text-slate-800 hover:bg-white/80"
+                        >
+                          Generate Test Data
+                        </Button>
+                      </div>
                       <CardDescription className="text-gray-700">
                         Fill in your {category.name.toLowerCase()} details
                       </CardDescription>
@@ -418,20 +494,20 @@ const CategoryFileUpload: React.FC<CategoryFileUploadProps> = ({ onUpload }) => 
                 <div className="mb-6 bg-gray-50 p-4 rounded-lg border border-gray-200 inline-block mx-auto">
                   <p className="text-sm text-gray-500 mb-2">Your data is now available at:</p>
                   <div className="flex items-center justify-center space-x-2">
-                    <Link2 className="h-4 w-4 text-blue-500" />
+                    <Link2 className="h-4 w-4 text-blue-600" />
                     <a 
-                      href={`https://trustdai.io/view/${uploadedCid}`} 
                       target="_blank" 
                       rel="noopener noreferrer"
-                      className="font-mono text-blue-600 hover:underline"
+                      href={getShareableUrl(uploadedCid, uploadedFileName)}
+                      className="text-blue-600 hover:underline"
                     >
-                      {formatWeb3Link(uploadedCid)}
+                      {getShareableUrl(uploadedCid, uploadedFileName)}
                     </a>
                   </div>
                 </div>
                 
                 <p className="text-sm text-gray-500 mb-4">
-                  Your data has been {features.litProtocol ? 'encrypted and ' : ''}stored securely on the blockchain.
+                  Your data has been {features.litProtocol ? 'encrypted with LPX tokens and ' : ''}stored securely on the blockchain.
                   You can manage access to this data at any time through the TrustDAI interface.
                 </p>
                 
@@ -456,10 +532,17 @@ const CategoryFileUpload: React.FC<CategoryFileUploadProps> = ({ onUpload }) => 
                     variant="default"
                     onClick={() => {
                       // Copy web3 link to clipboard
-                      navigator.clipboard.writeText(formatWeb3Link(uploadedCid));
+                      navigator.clipboard.writeText(formatWeb3Link(uploadedCid, uploadedFileName));
                     }}
                   >
                     Copy Web3 Link
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    className="font-semibold" 
+                    onClick={() => openWeb3Link(uploadedCid, uploadedFileName)}
+                  >
+                    Open Link
                   </Button>
                 </div>
               </div>

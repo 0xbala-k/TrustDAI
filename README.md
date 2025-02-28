@@ -1,261 +1,187 @@
-# TrustDAI - Decentralized File Management
+# TrustDAI - Decentralized Data Sharing Platform
 
-TrustDAI is a decentralized file management system that leverages EthStorage for distributed file storage and smart contracts for access control.
+TrustDAI is a decentralized application for secure personal data sharing with AI systems. It leverages blockchain technology, encryption with Lit Protocol, and environment-based access controls to give users complete authority over their data.
 
-## Features
+![TrustDAI Interface](https://i.imgur.com/example.png)
 
-- Secure decentralized file storage using EthStorage
-- Smart contract-based access control
-- File sharing and permissions management
-- Modern React UI with Tailwind and Shadcn UI
+## 🚀 Quick Start
 
-## Getting Started
+```bash
+# Clone the repository
+git clone https://github.com/yourusername/TrustDAI.git
+cd TrustDAI
+
+# Install dependencies
+npm install
+
+# Set up environment files
+cp .env.example .env
+cp .env.example .env-ai
+
+# Start the development server
+npm run dev
+```
+
+The app will be available at http://localhost:8080 (or next available port if 8080 is in use).
+
+## 📋 Setup Requirements
 
 ### Prerequisites
 
-- Node.js (v16+)
-- npm or yarn
-- MetaMask browser extension
-- Ethereum testnet tokens (Sepolia)
-- EthStorage testnet tokens (QuarkChain L2)
+- Node.js v16+
+- NPM v8+
+- MetaMask or other Web3 wallet browser extension
+- Sepolia Testnet ETH
+- TestLPX tokens (for Lit Protocol encryption)
+- QKC tokens (for QuarkChain L2 storage)
 
-### Installation
+## ⚙️ Environment Setup
 
-1. Clone the repository
-   ```
-   git clone https://github.com/yourusername/trustdai.git
-   cd trustdai
-   ```
+Create two environment files to simulate the main and AI environments:
 
-2. Install dependencies
-   ```
-   npm install
-   ```
+### `.env` (Main Environment)
 
-3. Create your environment file
-   ```
-   cp .env-sample .env
-   ```
-
-4. Edit the `.env` file and add your contract addresses and private key
-
-5. Start the development server
-   ```
-   npm run dev
-   ```
-
-## Configuration
-
-The application requires configuration for both the TrustDAI contract (on Sepolia) and EthStorage (on QuarkChain L2). 
-
-### Environment Variables
-
-- `CONTRACT_ADDRESS`: Your deployed TrustDAI contract address on Sepolia
-- `ETHSTORAGE_CONTRACT_ADDRESS`: The EthStorage contract address (default is provided)
-- `ETHSTORAGE_RPC_URL`: RPC URL for the EthStorage network
-- `PRIVATE_KEY`: Your wallet's private key (for backend/test operations)
-
-## Testing Blockchain Integration
-
-Before building the UI, it's important to verify that your blockchain integration is working correctly.
-
-### Testing from the Browser
-
-1. Start the development server
-   ```
-   npm run dev
-   ```
-
-2. Navigate to `/test` in your browser (or click the "Test Connection" button on the home page)
-
-3. Connect your MetaMask wallet
-
-4. Run tests individually or click "Run All Tests" to test:
-   - Wallet connection
-   - TrustDAI contract connection
-   - EthStorage contract connection 
-   - File upload functionality
-
-### Backend Testing (Node.js)
-
-For more detailed testing of blockchain integration:
-
-1. Run the blockchain integration test script
-   ```
-   npm run test:blockchain
-   ```
-
-2. The test will:
-   - Verify wallet connectivity
-   - Check TrustDAI contract deployment
-   - Test EthStorage connectivity
-   - Perform file operations (upload, access control, deletion)
-
-### Troubleshooting Common Issues
-
-#### TrustDAI Contract Issues
-
-If the TrustDAI contract test fails, you may need to deploy the contract to Sepolia:
-
-1. Install Hardhat and setup a project
-   ```
-   npm install --save-dev hardhat @nomicfoundation/hardhat-toolbox
-   npx hardhat init
-   ```
-
-2. Configure Hardhat for Sepolia in `hardhat.config.js`:
-   ```javascript
-   require("@nomicfoundation/hardhat-toolbox");
-   require("dotenv").config();
-   
-   module.exports = {
-     solidity: "0.8.17",
-     networks: {
-       sepolia: {
-         url: "https://rpc.sepolia.org",
-         accounts: [process.env.PRIVATE_KEY]
-       }
-     }
-   };
-   ```
-
-3. Create a deployment script in `scripts/deploy.js`:
-   ```javascript
-   const { ethers } = require("hardhat");
-   
-   async function main() {
-     const TrustDAI = await ethers.getContractFactory("TrustDAI");
-     const trustDAI = await TrustDAI.deploy();
-     await trustDAI.deployed();
-     console.log("TrustDAI deployed to:", trustDAI.address);
-   }
-   
-   main().catch((error) => {
-     console.error(error);
-     process.exit(1);
-   });
-   ```
-
-4. Deploy the contract:
-   ```
-   npx hardhat run scripts/deploy.js --network sepolia
-   ```
-
-5. Update your `.env` file with the newly deployed contract address
-
-#### EthStorage Issues
-
-For EthStorage to work correctly, you need:
-
-1. A wallet with ETH on QuarkChain L2 TestNet (Chain ID: 3335)
-   - You can bridge ETH from Sepolia to QuarkChain L2 using the [EthStorage bridge](https://beta.testnet.ethstorage.io/bridge)
-
-2. Make sure your MetaMask is configured for both networks:
-   - Sepolia: https://rpc.sepolia.org (Chain ID: 11155111)
-   - QuarkChain L2: https://rpc.beta.testnet.l2.quarkchain.io:8545/ (Chain ID: 3335)
-
-## Usage
-
-1. Connect your wallet using the "Connect Wallet" button
-2. Navigate to the File Manager
-3. Upload files using the upload tab
-4. Manage file permissions in the files tab
-5. Share access with other wallet addresses
-6. Download or delete your files
-
-## Architecture
-
-- **Frontend**: React, TypeScript, Tailwind CSS, Shadcn UI
-- **Smart Contracts**: Solidity (TrustDAI.sol)
-- **Storage**: EthStorage for decentralized file storage
-- **Networks**: 
-  - Sepolia: TrustDAI contract
-  - QuarkChain L2: EthStorage operations
-
-## License
-
-This project is licensed under the MIT License - see the LICENSE file for details
-
-## End-to-End Testing
-
-TrustDAI includes comprehensive end-to-end tests that can be run in both command-line and UI modes. These tests verify blockchain connectivity, contract interactions, Lit Protocol encryption, and personal data marketplace functionality.
-
-### Command-Line Tests
-
-Run tests from the command line using the following npm scripts:
-
-```bash
-# Run all tests in mock mode (no blockchain transactions)
-npm run test:e2e:mock
-
-# Run all tests in live mode (using actual blockchain)
-npm run test:e2e:live
-
-# Run with custom options
-npm run test:e2e -- --mode=live --output=results.json --export
+```
+VITE_APP_ENV=dev
+VITE_CHAIN_ID=11155111
+VITE_CONTRACT_ADDRESS=0x123456789abcdef123456789abcdef12345678
+VITE_IPFS_GATEWAY=https://ipfs.io/ipfs/
+VITE_ETHSTORAGE_ENDPOINT=https://eth.sep.w3link.io/
+VITE_LIT_PROTOCOL_ENABLED=true
+VITE_RPC_URL=https://sepolia.infura.io/v3/your-infura-key
 ```
 
-### UI-Based Tests
+### `.env-ai` (AI Environment)
 
-The application includes a UI-based test runner accessible through the app at `/tests`. This provides an interactive way to:
+```
+VITE_APP_ENV=dev-ai
+VITE_CHAIN_ID=11155111
+VITE_CONTRACT_ADDRESS=0x123456789abcdef123456789abcdef12345678
+VITE_IPFS_GATEWAY=https://ipfs.io/ipfs/
+VITE_ETHSTORAGE_ENDPOINT=https://eth.sep.w3link.io/
+VITE_LIT_PROTOCOL_ENABLED=true
+VITE_RPC_URL=https://sepolia.infura.io/v3/your-infura-key
+```
 
-1. Select which tests to run
-2. Choose between mock and live modes
-3. View detailed test results
-4. Debug failures
+## 🔐 Obtaining Testnet Tokens
 
-### Test Organization
+### Lit Protocol Testnet Tokens (tstLPX)
 
-Tests are organized into several categories:
+TrustDAI uses [Lit Protocol's Chronicle Yellowstone](https://developer.litprotocol.com/connecting-to-a-lit-network/lit-blockchains/chronicle-yellowstone) testnet for encryption services.
 
-- **Wallet Connection**: Tests basic wallet functionality
-- **Contract Interaction**: Tests TrustDAI contract operations
-- **Lit Protocol**: Tests encryption and access control
-- **Personal Data Market**: Tests data category sharing and ElizaOS integration
+1. Add Chronicle Yellowstone to MetaMask:
+   - Network Name: `Chronicle Yellowstone - Lit Protocol Testnet`
+   - RPC URL: `https://yellowstone-rpc.litprotocol.com/`
+   - Chain ID: `175188`
+   - Currency Symbol: `tstLPX`
+   - Block Explorer: `https://yellowstone-explorer.litprotocol.com/`
 
-## Personal Data Marketplace
+2. Use the Lit Protocol faucet to obtain test tokens (accessible from their documentation)
 
-TrustDAI includes a personal data marketplace that allows users to securely share specific categories of their personal data with AI systems like ElizaOS, while maintaining control over what information is shared.
+3. Switch back to Sepolia network for using TrustDAI
 
-### Data Categories
+### QuarkChain Testnet Tokens (QKC)
 
-The marketplace supports the following data categories:
+For EthStorage functionality, TrustDAI uses QuarkChain L2 testnet.
 
-1. **Personal Information**: Basic details like name, date of birth, etc.
-2. **Addresses**: Current and historical address information
-3. **Interests & Preferences**: Hobbies, preferences, and behavioral data
-4. **Travel History**: Countries visited, travel preferences, etc.
-5. **Purchasing Habits**: Shopping patterns, brand preferences, etc.
+1. Visit the [QuarkChain faucet](https://qkc-l2-faucet.eth.sep.w3link.io/)
+2. Connect your wallet (must have at least 0.01 ETH on Ethereum mainnet)
+3. Request QKC tokens (options for 10, 25, or 62.5 QKC)
 
-### How It Works
+## 🧪 Testing Features
 
-1. **Data Ownership**: Users maintain ownership of their personal data
-2. **Selective Sharing**: Users choose exactly which categories to share
-3. **Pricing Control**: Users set their own prices for each data category
-4. **Encryption**: Data is encrypted using Lit Protocol with blockchain-based access control
-5. **Integration with ElizaOS**: Shared data enhances AI interactions through RAG
+### Web3 Links
 
-### ElizaOS Integration
+TrustDAI generates web3 links using the [Web3URL standard](https://docs.web3url.io/) for accessing content stored in EthStorage. The links follow these formats:
 
-When data is shared with env-ai, it can be processed and used to enhance ElizaOS RAG capabilities. The integration:
+1. **Gateway URLs** (for browser compatibility):
+   - FlatDirectory format: `https://eth.sep.w3link.io/ethereum:{CONTRACT_ADDRESS}/{PATH}`
+   - ENS name format: `https://eth.sep.w3link.io/{ENS_NAME}/{PATH}`
+   - Legacy IPFS format: `https://eth.sep.w3link.io/ipfs/{CID}` (for backward compatibility)
 
-1. Processes structured personal data for retrieval
-2. Enhances AI responses with personalized context
-3. Improves recommendation quality based on user preferences
+2. **Native Web3URLs** (for applications supporting the protocol):
+   - `web3://ethereum:{CONTRACT_ADDRESS}/{PATH}`
+   - `web3://{ENS_NAME}/{PATH}`
 
-## Lit Protocol Integration
+Files uploaded through TrustDAI are stored in a FlatDirectory contract on EthStorage, providing:
+- Better organization with directory-like paths
+- Improved access control through smart contracts
+- Ability to use user-friendly ENS names instead of contract addresses
 
-TrustDAI uses Lit Protocol for end-to-end encryption of sensitive data. This ensures that only authorized wallets can access encrypted content.
+For testing web3 links:
+1. Visit http://localhost:8080/link-tester.html
+2. Use the built-in tools to generate and test different link formats
+3. The diagnostics tab can help troubleshoot any link access issues
 
-### Configuration
+### LPX Integration
 
-Configure Lit Protocol by updating the environment variables in `.env` and `.env-ai` files. See `.env-sample` for all available options.
+To test Lit Protocol encryption using LPX tokens:
+1. Visit http://localhost:8080/lit-test.html or http://localhost:8080/lit-api-test.html
+2. Connect your wallet
+3. Enable LPX feature
+4. Run the encryption/decryption tests
 
-### Using Encrypted Data Sharing
+### Mock Data Generation
 
-1. Enable the Lit Protocol feature in the UI
-2. Upload files with encryption enabled
-3. Grant access to specific wallet addresses
-4. Recipients can decrypt files if they have been granted access
+During tests, the platform automatically generates appropriate mock data based on the selected categories. For example:
+- Personal Information: names, dates, contact details
+- Purchasing Habits: shopping preferences, brand affiliations
+- Travel History: locations, accommodations, dates
 
-For more details, see [LIT_PROTOCOL_SETUP.md](./LIT_PROTOCOL_SETUP.md).
+## 🔧 Troubleshooting
+
+### LPX Balance Not Showing
+If your LPX balance is not showing correctly:
+1. Ensure you have tstLPX tokens in your wallet on Chronicle Yellowstone network
+2. Check that your wallet is properly connected
+3. Visit the `/features` page and toggle Lit Protocol on/off
+4. Refresh the application
+
+### Web3 Links Not Working
+If web3 links to EthStorage files are returning a 400 error:
+
+1. Ensure you're using the correct URL format for EthStorage files: `https://eth.sep.w3link.io/ipfs/{CID}`
+2. Note that Qm-style CIDs must be prefixed with `ipfs/`
+3. For files using the newer format, use them directly without the `ipfs/` prefix
+4. Use the application's built-in "Open" button which handles the correct formatting automatically
+5. If creating links manually, refer to EthStorage documentation for proper URL formatting
+
+## 💻 For AI Agents/Tools
+
+If you're an AI agent or tool like Cursor interacting with this codebase, here's a quick guide:
+
+```
+TrustDAI is a React+TypeScript application using Vite that enables secure personal data sharing with AI systems. Key features:
+
+1. Environment-based access control (dev and dev-ai environments)
+2. Lit Protocol integration for encryption (LPX tokens)
+3. QuarkChain L2 for storage (QKC tokens)
+4. Web3 link generation with fallback mechanism
+
+Important components:
+- src/components/CategoryFileUpload.tsx: Main data upload dialog
+- src/components/WalletConnection.tsx: Wallet integration
+- src/services/LitProtocolService.ts: Encryption service
+- src/utils/formatters.ts: Utility functions for web3 links
+- public/live-test.html: Comprehensive testing interface
+
+Key concepts:
+- Users can upload personal data in categorized files
+- Data can be encrypted using Lit Protocol (requires LPX tokens)
+- Files are stored on EthStorage (requires QKC tokens)
+- Web3 links provide access to files with appropriate permissions
+```
+
+## 📱 Demo Links
+
+- Main Application: http://localhost:8080/
+- Feature Toggle: http://localhost:8080/features
+- Test Pages:
+  - Live Test: http://localhost:8080/live-test.html
+  - LPX API Test: http://localhost:8080/lit-api-test.html 
+  - LPX Basic Test: http://localhost:8080/lit-test.html
+  - Web3 Link Tester: http://localhost:8080/link-tester.html
+
+## 📄 License
+
+[MIT License](LICENSE)

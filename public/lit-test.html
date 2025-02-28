@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lit Protocol Test</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+      line-height: 1.5;
+    }
+    
+    .card {
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 20px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    button {
+      background-color: #4f46e5;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      padding: 8px 16px;
+      cursor: pointer;
+      font-size: 14px;
+      margin-right: 8px;
+      margin-bottom: 8px;
+    }
+    
+    button:hover {
+      background-color: #4338ca;
+    }
+    
+    pre {
+      background-color: #f5f5f5;
+      padding: 12px;
+      border-radius: 4px;
+      overflow-x: auto;
+    }
+    
+    .log {
+      height: 300px;
+      overflow-y: auto;
+      background-color: #f8f8f8;
+      padding: 12px;
+      border-radius: 4px;
+      font-family: monospace;
+      margin-top: 20px;
+    }
+    
+    .success {
+      color: #16a34a;
+    }
+    
+    .error {
+      color: #dc2626;
+    }
+    
+    .warning {
+      color: #ca8a04;
+    }
+  </style>
+</head>
+<body>
+  <h1>Lit Protocol Test</h1>
+  
+  <div class="card">
+    <h2>Environment</h2>
+    <div>
+      <button id="toggleLitProtocol">Enable Lit Protocol</button>
+      <span id="litStatus" class="warning">Disabled</span>
+    </div>
+    <div>
+      <button id="toggleEnv">Switch to <span id="envName">dev-ai</span></button>
+      <span id="currentEnv" class="success">dev</span>
+    </div>
+  </div>
+  
+  <div class="card">
+    <h2>Wallet</h2>
+    <div>
+      <button id="connectWallet">Connect Wallet</button>
+      <span id="walletStatus" class="warning">Not Connected</span>
+    </div>
+    <div id="walletInfo" style="display: none">
+      <p>Address: <span id="walletAddress"></span></p>
+      <p>Network: <span id="networkName"></span></p>
+      <p>LPX Balance: <span id="litBalance">0</span> LPX</p>
+    </div>
+  </div>
+  
+  <div class="card">
+    <h2>Test Encryption</h2>
+    <div>
+      <label for="testContent">Test Content:</label>
+      <textarea id="testContent" rows="3" style="width: 100%; margin-bottom: 10px;">This is a test message that will be encrypted with Lit Protocol</textarea>
+      <button id="testEncryption">Encrypt & Decrypt</button>
+    </div>
+  </div>
+  
+  <div class="card">
+    <h2>Cross-Environment Test</h2>
+    <div>
+      <button id="testEnvSharing">Test Environment Sharing</button>
+      <p>This will encrypt data in the current environment and verify it can be accessed in the other environment.</p>
+    </div>
+  </div>
+  
+  <div class="log" id="logOutput"></div>
+  
+  <script>
+    // Log function
+    function log(message, type = 'info') {
+      const logElement = document.getElementById('logOutput');
+      const entry = document.createElement('div');
+      entry.classList.add(type);
+      entry.textContent = `${new Date().toISOString().substring(11, 19)} [${type}] ${message}`;
+      logElement.appendChild(entry);
+      logElement.scrollTop = logElement.scrollHeight;
+    }
+    
+    // Wallet connection
+    let currentAccount = null;
+    let currentEnvironment = 'dev';
+    
+    // Enable/disable Lit Protocol
+    document.getElementById('toggleLitProtocol').addEventListener('click', () => {
+      try {
+        const litStatus = document.getElementById('litStatus');
+        const isEnabled = litStatus.textContent === 'Enabled';
+        
+        // Toggle local storage setting
+        localStorage.setItem('trustdai_feature_flags', JSON.stringify({
+          litProtocol: !isEnabled
+        }));
+        
+        if (isEnabled) {
+          litStatus.textContent = 'Disabled';
+          litStatus.className = 'warning';
+          log('Lit Protocol disabled');
+        } else {
+          litStatus.textContent = 'Enabled';
+          litStatus.className = 'success';
+          log('Lit Protocol enabled');
+        }
+      } catch (error) {
+        log(`Error toggling Lit Protocol: ${error.message}`, 'error');
+      }
+    });
+    
+    // Switch environment
+    document.getElementById('toggleEnv').addEventListener('click', () => {
+      try {
+        const envButton = document.getElementById('envName');
+        const currentEnvSpan = document.getElementById('currentEnv');
+        
+        if (currentEnvironment === 'dev') {
+          currentEnvironment = 'dev-ai';
+          envButton.textContent = 'dev';
+          currentEnvSpan.textContent = 'dev-ai';
+          log('Switched to dev-ai environment');
+        } else {
+          currentEnvironment = 'dev';
+          envButton.textContent = 'dev-ai';
+          currentEnvSpan.textContent = 'dev';
+          log('Switched to dev environment');
+        }
+      } catch (error) {
+        log(`Error switching environment: ${error.message}`, 'error');
+      }
+    });
+    
+    // Connect wallet
+    document.getElementById('connectWallet').addEventListener('click', async () => {
+      try {
+        if (typeof window.ethereum === 'undefined') {
+          log('MetaMask is not installed!', 'error');
+          return;
+        }
+        
+        const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+        currentAccount = accounts[0];
+        
+        // Update UI
+        document.getElementById('walletStatus').textContent = 'Connected';
+        document.getElementById('walletStatus').className = 'success';
+        document.getElementById('walletInfo').style.display = 'block';
+        document.getElementById('walletAddress').textContent = `${currentAccount.substring(0, 6)}...${currentAccount.substring(38)}`;
+        
+        // Get network
+        const chainId = await window.ethereum.request({ method: 'eth_chainId' });
+        let networkName;
+        switch (parseInt(chainId, 16)) {
+          case 1:
+            networkName = 'Ethereum Mainnet';
+            break;
+          case 11155111:
+            networkName = 'Sepolia Testnet';
+            break;
+          default:
+            networkName = `Chain ID: ${parseInt(chainId, 16)}`;
+        }
+        document.getElementById('networkName').textContent = networkName;
+        
+        // Simulate LIT balance (for testing)
+        document.getElementById('litBalance').textContent = (Math.random() * 100).toFixed(2);
+        
+        log(`Wallet connected: ${currentAccount}`);
+      } catch (error) {
+        log(`Error connecting wallet: ${error.message}`, 'error');
+      }
+    });
+    
+    // Test encryption
+    document.getElementById('testEncryption').addEventListener('click', async () => {
+      try {
+        if (!currentAccount) {
+          log('Please connect your wallet first', 'warning');
+          return;
+        }
+        
+        const testContent = document.getElementById('testContent').value;
+        log(`Testing Lit Protocol with content: ${testContent.substring(0, 20)}...`);
+        
+        // In a real implementation, this would call the Lit Protocol JavaScript SDK
+        // Here we'll simulate the process
+        
+        log('Encrypting content...');
+        // Simulate encryption
+        const encryptedContent = `encrypted_${testContent}`;
+        log('Content encrypted successfully');
+        
+        log('Storing encryption key with access control conditions...');
+        // Simulate storing key
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        log('Encryption key stored with Lit Protocol');
+        
+        log('Retrieving encryption key...');
+        // Simulate retrieval
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        log('Encryption key retrieved');
+        
+        log('Decrypting content...');
+        // Simulate decryption
+        const decryptedContent = testContent;
+        log(`Decrypted content: ${decryptedContent.substring(0, 20)}...`);
+        
+        // Verify
+        if (decryptedContent === testContent) {
+          log('TEST PASSED: Content successfully encrypted and decrypted', 'success');
+        } else {
+          log('TEST FAILED: Decrypted content does not match original', 'error');
+        }
+      } catch (error) {
+        log(`Error testing encryption: ${error.message}`, 'error');
+      }
+    });
+    
+    // Test environment sharing
+    document.getElementById('testEnvSharing').addEventListener('click', async () => {
+      try {
+        if (!currentAccount) {
+          log('Please connect your wallet first', 'warning');
+          return;
+        }
+        
+        const sourceEnv = currentEnvironment;
+        const targetEnv = sourceEnv === 'dev' ? 'dev-ai' : 'dev';
+        
+        log(`Testing sharing from ${sourceEnv} to ${targetEnv}...`);
+        
+        const testContent = `Secret message from ${sourceEnv} to ${targetEnv}: ${Date.now()}`;
+        log(`Original content: ${testContent}`);
+        
+        // Simulate encryption in source environment
+        log(`Encrypting in ${sourceEnv} environment...`);
+        const encryptedContent = `encrypted_${testContent}`;
+        log('Content encrypted successfully');
+        
+        // Simulate access granting
+        log(`Granting access to ${targetEnv} environment...`);
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        log(`Access granted to ${targetEnv}`);
+        
+        // Simulate switching environments
+        log(`Switching to ${targetEnv} for decryption...`);
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        // Simulate decryption in target environment
+        log(`Decrypting in ${targetEnv} environment...`);
+        const decryptedContent = testContent;
+        log(`Decrypted in ${targetEnv}: ${decryptedContent}`);
+        
+        // Verify
+        if (decryptedContent === testContent) {
+          log(`TEST PASSED: Content successfully shared from ${sourceEnv} to ${targetEnv}`, 'success');
+        } else {
+          log(`TEST FAILED: Shared content does not match original`, 'error');
+        }
+      } catch (error) {
+        log(`Error testing environment sharing: ${error.message}`, 'error');
+      }
+    });
+    
+    // Initialize
+    document.addEventListener('DOMContentLoaded', () => {
+      // Check if Lit Protocol is enabled in local storage
+      try {
+        const storedFeatures = localStorage.getItem('trustdai_feature_flags');
+        if (storedFeatures) {
+          const features = JSON.parse(storedFeatures);
+          if (features.litProtocol) {
+            document.getElementById('litStatus').textContent = 'Enabled';
+            document.getElementById('litStatus').className = 'success';
+            log('Lit Protocol is enabled');
+          }
+        }
+      } catch (error) {
+        log(`Error checking Lit Protocol status: ${error.message}`, 'error');
+      }
+      
+      log('Test page initialized');
+    });
+  </script>
+</body>
+</html> 

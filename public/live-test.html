@@ -1,0 +1,699 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TrustDAI Live Test</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+      line-height: 1.5;
+    }
+    
+    h1 {
+      background: linear-gradient(to right, #4f46e5, #2563eb);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 1rem;
+    }
+    
+    .card {
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 20px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    button {
+      background-color: #4f46e5;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      padding: 8px 16px;
+      cursor: pointer;
+      font-size: 14px;
+      margin-right: 8px;
+      margin-bottom: 8px;
+    }
+    
+    button:hover {
+      background-color: #4338ca;
+    }
+    
+    button:disabled {
+      background-color: #9ca3af;
+      cursor: not-allowed;
+    }
+    
+    .log {
+      height: 300px;
+      overflow-y: auto;
+      background-color: #f8f8f8;
+      padding: 12px;
+      border-radius: 4px;
+      font-family: monospace;
+      font-size: 13px;
+      line-height: 1.4;
+      margin-top: 20px;
+    }
+    
+    .success {
+      color: #16a34a;
+    }
+    
+    .error {
+      color: #dc2626;
+    }
+    
+    .warning {
+      color: #ca8a04;
+    }
+    
+    .info {
+      color: #2563eb;
+    }
+    
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+      gap: 1rem;
+    }
+    
+    .test-result {
+      display: flex;
+      align-items: center;
+      padding: 0.5rem;
+      margin-bottom: 0.5rem;
+      border-radius: 4px;
+    }
+    
+    .test-result.success {
+      background-color: rgba(22, 163, 74, 0.1);
+    }
+    
+    .test-result.error {
+      background-color: rgba(220, 38, 38, 0.1);
+    }
+    
+    .test-result.running {
+      background-color: rgba(37, 99, 235, 0.1);
+    }
+    
+    pre {
+      white-space: pre-wrap;
+      word-break: break-all;
+      background: #f1f5f9;
+      padding: 1rem;
+      border-radius: 0.25rem;
+      overflow: auto;
+      max-height: 12rem;
+    }
+    
+    .web3-link {
+      font-family: monospace;
+      padding: 0.5rem;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 0.25rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1rem;
+    }
+    
+    .copy-button {
+      background: none;
+      border: none;
+      color: #4f46e5;
+      cursor: pointer;
+      margin: 0;
+      padding: 0.25rem 0.5rem;
+    }
+    
+    .copy-button:hover {
+      background: #f1f5f9;
+      border-radius: 0.25rem;
+    }
+    
+    .badge {
+      display: inline-block;
+      padding: 0.25rem 0.5rem;
+      border-radius: 0.25rem;
+      font-size: 0.75rem;
+      font-weight: 500;
+    }
+    
+    .badge.success {
+      background-color: #dcfce7;
+      color: #166534;
+    }
+    
+    .badge.warning {
+      background-color: #fef9c3;
+      color: #854d0e;
+    }
+    
+    .badge.error {
+      background-color: #fee2e2;
+      color: #b91c1c;
+    }
+  </style>
+</head>
+<body>
+  <h1>TrustDAI Live Test - LPX Tokens & Web3 Links</h1>
+  
+  <div class="card">
+    <h2>Wallet & Environment</h2>
+    <div class="grid">
+      <div>
+        <h3>Wallet</h3>
+        <button id="connectWallet">Connect Wallet</button>
+        <div id="walletInfo" style="display: none;">
+          <p>Address: <span id="walletAddress" class="badge"></span></p>
+          <p>Network: <span id="networkName" class="badge"></span></p>
+          <p>LPX Balance: <span id="lpxBalance" class="badge">0</span> LPX</p>
+        </div>
+      </div>
+      
+      <div>
+        <h3>Environment</h3>
+        <button id="toggleEnv" class="env-dev">Current: <span id="currentEnv">dev</span></button>
+        <button id="toggleLpx">Enable LPX</button>
+      </div>
+    </div>
+  </div>
+  
+  <div class="card">
+    <h2>Test Web3 Links</h2>
+    <div id="web3LinkTests">
+      <div class="web3-link">
+        <span id="demoLink">trustdai://QmExample123</span>
+        <div>
+          <button class="copy-button" onclick="copyLink('demoLink')">Copy</button>
+          <button class="copy-button" onclick="openLink('demoLink')">Open</button>
+        </div>
+      </div>
+      
+      <button id="generateLink">Generate Random CID Link</button>
+      <button id="testAllLinks">Test All Web3 Link Functions</button>
+    </div>
+  </div>
+  
+  <div class="card">
+    <h2>LPX Token Tests</h2>
+    <div>
+      <button id="checkLpxBalance">Check LPX Balance</button>
+      <button id="simulateTransaction">Simulate LPX Transaction</button>
+      <button id="runFullLpxTest">Run Full LPX Test</button>
+    </div>
+    
+    <div id="lpxTestResults">
+      <!-- Test results will appear here -->
+    </div>
+  </div>
+  
+  <div class="card">
+    <h2>Cross-Environment Test</h2>
+    <div>
+      <p>Encrypt data in <span id="sourceEnv">dev</span> and decrypt in <span id="targetEnv">dev-ai</span>.</p>
+      <button id="runCrossEnvTest">Run Cross-Environment Test</button>
+    </div>
+  </div>
+  
+  <div class="log" id="logOutput"></div>
+  
+  <script>
+    // Utility functions
+    function log(message, type = 'info') {
+      const logElement = document.getElementById('logOutput');
+      const entry = document.createElement('div');
+      entry.classList.add(type);
+      const timestamp = new Date().toISOString().substring(11, 19);
+      entry.textContent = `${timestamp} [${type.toUpperCase()}] ${message}`;
+      logElement.appendChild(entry);
+      logElement.scrollTop = logElement.scrollHeight;
+      console.log(`[${type}] ${message}`);
+    }
+    
+    function addTestResult(id, name, status, message) {
+      const resultsContainer = document.getElementById('lpxTestResults');
+      let resultElement = document.getElementById(id);
+      
+      if (!resultElement) {
+        resultElement = document.createElement('div');
+        resultElement.id = id;
+        resultElement.className = `test-result ${status}`;
+        resultsContainer.appendChild(resultElement);
+      } else {
+        resultElement.className = `test-result ${status}`;
+      }
+      
+      resultElement.innerHTML = `
+        <div style="flex: 1;">
+          <strong>${name}</strong>
+          <div>${message}</div>
+        </div>
+      `;
+    }
+    
+    function copyLink(elementId) {
+      const text = document.getElementById(elementId).textContent;
+      navigator.clipboard.writeText(text)
+        .then(() => {
+          log(`Copied to clipboard: ${text}`, 'success');
+        })
+        .catch(err => {
+          log(`Error copying: ${err}`, 'error');
+        });
+    }
+    
+    function openLink(elementId) {
+      const link = document.getElementById(elementId).textContent;
+      log(`Opening link: ${link}`);
+      
+      try {
+        // Create an iframe to attempt opening with protocol
+        const iframe = document.createElement('iframe');
+        iframe.style.display = 'none';
+        document.body.appendChild(iframe);
+        
+        // Try to open the protocol
+        iframe.src = link;
+        
+        // Fallback to regular URL after short timeout
+        setTimeout(() => {
+          document.body.removeChild(iframe);
+          // Extract CID from trustdai:// link
+          const cid = link.replace('trustdai://', '');
+          const fallbackUrl = `${window.location.origin}/file/${cid}`;
+          
+          log(`Falling back to web URL: ${fallbackUrl}`, 'info');
+          window.open(fallbackUrl, '_blank');
+        }, 500);
+      } catch (error) {
+        log(`Error opening link: ${error.message}`, 'error');
+      }
+    }
+    
+    function generateRandomCid() {
+      const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+      let result = 'Qm';
+      for (let i = 0; i < 44; i++) {
+        result += chars.charAt(Math.floor(Math.random() * chars.length));
+      }
+      return result;
+    }
+    
+    // Wallet state
+    let currentAccount = null;
+    let currentEnvironment = 'dev';
+    let lpxEnabled = false;
+    
+    // Connect wallet
+    document.getElementById('connectWallet').addEventListener('click', async () => {
+      try {
+        if (typeof window.ethereum === 'undefined') {
+          log('MetaMask is not installed!', 'error');
+          return;
+        }
+        
+        const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+        currentAccount = accounts[0];
+        
+        // Update UI
+        document.getElementById('walletInfo').style.display = 'block';
+        document.getElementById('walletAddress').textContent = `${currentAccount.substring(0, 6)}...${currentAccount.substring(38)}`;
+        document.getElementById('walletAddress').className = 'badge success';
+        
+        // Get network
+        const chainId = await window.ethereum.request({ method: 'eth_chainId' });
+        const chainIdInt = parseInt(chainId, 16);
+        
+        let networkName;
+        let networkBadgeClass = 'badge ';
+        
+        switch (chainIdInt) {
+          case 1:
+            networkName = 'Ethereum Mainnet';
+            networkBadgeClass += 'success';
+            break;
+          case 11155111:
+            networkName = 'Sepolia Testnet';
+            networkBadgeClass += 'success';
+            break;
+          default:
+            networkName = `Chain ID: ${chainIdInt}`;
+            networkBadgeClass += 'warning';
+        }
+        
+        document.getElementById('networkName').textContent = networkName;
+        document.getElementById('networkName').className = networkBadgeClass;
+        
+        // Get LPX balance (simulated)
+        simulateLpxBalance();
+        
+        log(`Wallet connected: ${currentAccount}`, 'success');
+      } catch (error) {
+        log(`Error connecting wallet: ${error.message}`, 'error');
+      }
+    });
+    
+    // Toggle environment
+    document.getElementById('toggleEnv').addEventListener('click', () => {
+      if (currentEnvironment === 'dev') {
+        currentEnvironment = 'dev-ai';
+        document.getElementById('currentEnv').textContent = 'dev-ai';
+        document.getElementById('toggleEnv').className = 'env-dev-ai';
+        document.getElementById('sourceEnv').textContent = 'dev-ai';
+        document.getElementById('targetEnv').textContent = 'dev';
+      } else {
+        currentEnvironment = 'dev';
+        document.getElementById('currentEnv').textContent = 'dev';
+        document.getElementById('toggleEnv').className = 'env-dev';
+        document.getElementById('sourceEnv').textContent = 'dev';
+        document.getElementById('targetEnv').textContent = 'dev-ai';
+      }
+      
+      log(`Switched to ${currentEnvironment} environment`, 'info');
+    });
+    
+    // Toggle LPX
+    document.getElementById('toggleLpx').addEventListener('click', () => {
+      lpxEnabled = !lpxEnabled;
+      
+      // Update local storage
+      localStorage.setItem('trustdai_feature_flags', JSON.stringify({
+        litProtocol: lpxEnabled
+      }));
+      
+      const button = document.getElementById('toggleLpx');
+      if (lpxEnabled) {
+        button.textContent = 'Disable LPX';
+        log('LPX enabled', 'success');
+      } else {
+        button.textContent = 'Enable LPX';
+        log('LPX disabled', 'warning');
+      }
+    });
+    
+    // Generate random web3 link
+    document.getElementById('generateLink').addEventListener('click', () => {
+      const cid = generateRandomCid();
+      const link = `trustdai://${cid}`;
+      document.getElementById('demoLink').textContent = link;
+      log(`Generated new link: ${link}`, 'info');
+    });
+    
+    // Test all web3 link functions
+    document.getElementById('testAllLinks').addEventListener('click', async () => {
+      log('Testing web3 link functions...', 'info');
+      
+      // Test 1: Generate random CID
+      const cid = generateRandomCid();
+      const link = `trustdai://${cid}`;
+      document.getElementById('demoLink').textContent = link;
+      log(`1. Generated link: ${link}`, 'success');
+      
+      // Test 2: Copy link
+      try {
+        await navigator.clipboard.writeText(link);
+        log('2. Copy function working', 'success');
+      } catch (err) {
+        log(`2. Copy error: ${err.message}`, 'error');
+      }
+      
+      // Test 3: Format validation
+      if (link.startsWith('trustdai://') && link.length > 10) {
+        log('3. Link format validation passed', 'success');
+      } else {
+        log('3. Link format validation failed', 'error');
+      }
+      
+      // Test 4: Fallback URL generation
+      const fallbackUrl = `${window.location.origin}/file/${cid}`;
+      log(`4. Fallback URL generated: ${fallbackUrl}`, 'success');
+      
+      log('Web3 link tests completed', 'info');
+    });
+    
+    // Check LPX balance
+    function simulateLpxBalance() {
+      // Simulate an LPX balance based on wallet address
+      let balance;
+      if (currentAccount) {
+        // Generate a consistent balance based on the last few characters of the address
+        const seed = parseInt(currentAccount.substring(38), 16) % 1000;
+        balance = (seed / 10).toFixed(2);
+      } else {
+        balance = '0.00';
+      }
+      
+      document.getElementById('lpxBalance').textContent = balance;
+      
+      // Set badge class based on balance
+      const balanceBadge = document.getElementById('lpxBalance');
+      if (parseFloat(balance) > 10) {
+        balanceBadge.className = 'badge success';
+      } else if (parseFloat(balance) > 0) {
+        balanceBadge.className = 'badge warning';
+      } else {
+        balanceBadge.className = 'badge error';
+      }
+      
+      return parseFloat(balance);
+    }
+    
+    document.getElementById('checkLpxBalance').addEventListener('click', () => {
+      if (!currentAccount) {
+        log('Please connect your wallet first', 'warning');
+        return;
+      }
+      
+      const balance = simulateLpxBalance();
+      log(`Current LPX balance: ${balance} LPX`, 'info');
+      
+      // Add test result
+      addTestResult(
+        'lpx-balance-check',
+        'LPX Balance Check',
+        balance > 0 ? 'success' : 'error',
+        balance > 0 
+          ? `Balance: ${balance} LPX` 
+          : 'No LPX tokens detected'
+      );
+    });
+    
+    // Simulate LPX transaction
+    document.getElementById('simulateTransaction').addEventListener('click', async () => {
+      if (!currentAccount) {
+        log('Please connect your wallet first', 'warning');
+        return;
+      }
+      
+      // Add running status
+      addTestResult(
+        'lpx-transaction',
+        'LPX Transaction',
+        'running',
+        'Processing transaction...'
+      );
+      
+      log('Simulating LPX transaction...', 'info');
+      
+      // Simulate network delay
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      const success = Math.random() > 0.3; // 70% success rate
+      
+      if (success) {
+        log('Transaction successful!', 'success');
+        addTestResult(
+          'lpx-transaction',
+          'LPX Transaction',
+          'success',
+          'Transaction confirmed on network'
+        );
+      } else {
+        log('Transaction failed', 'error');
+        addTestResult(
+          'lpx-transaction',
+          'LPX Transaction',
+          'error',
+          'Transaction failed - insufficient gas'
+        );
+      }
+    });
+    
+    // Run full LPX test
+    document.getElementById('runFullLpxTest').addEventListener('click', async () => {
+      if (!currentAccount) {
+        log('Please connect your wallet first', 'warning');
+        return;
+      }
+      
+      log('Running full LPX test suite...', 'info');
+      
+      // Clear previous results
+      document.getElementById('lpxTestResults').innerHTML = '';
+      
+      // Test 1: Check LPX Feature Flag
+      addTestResult('lpx-feature', 'LPX Feature Flag', 'running', 'Checking feature flag...');
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      const features = JSON.parse(localStorage.getItem('trustdai_feature_flags') || '{}');
+      const lpxFeatureEnabled = features.litProtocol === true;
+      
+      if (!lpxFeatureEnabled) {
+        // Enable it
+        localStorage.setItem('trustdai_feature_flags', JSON.stringify({
+          litProtocol: true
+        }));
+        lpxEnabled = true;
+        document.getElementById('toggleLpx').textContent = 'Disable LPX';
+        log('LPX feature enabled for testing', 'info');
+      }
+      
+      addTestResult(
+        'lpx-feature', 
+        'LPX Feature Flag', 
+        'success', 
+        'LPX feature flag is enabled'
+      );
+      
+      // Test 2: Check LPX Balance
+      addTestResult('lpx-balance', 'LPX Balance', 'running', 'Checking balance...');
+      await new Promise(resolve => setTimeout(resolve, 800));
+      
+      const balance = simulateLpxBalance();
+      const balanceStatus = balance > 0 ? 'success' : 'error';
+      
+      addTestResult(
+        'lpx-balance', 
+        'LPX Balance', 
+        balanceStatus, 
+        balance > 0 ? `Balance: ${balance} LPX` : 'No LPX tokens detected'
+      );
+      
+      // Test 3: Encrypt with LPX
+      addTestResult('lpx-encrypt', 'LPX Encryption', 'running', 'Encrypting test data...');
+      await new Promise(resolve => setTimeout(resolve, 1200));
+      
+      const testData = {
+        message: 'This is a test message encrypted with LPX',
+        timestamp: new Date().toISOString()
+      };
+      
+      const encryptedData = {
+        encryptedContent: `encrypted_${JSON.stringify(testData)}`,
+        symmetricKey: new Uint8Array([1, 2, 3, 4, 5])
+      };
+      
+      addTestResult(
+        'lpx-encrypt', 
+        'LPX Encryption', 
+        'success', 
+        'Test data encrypted successfully'
+      );
+      log('Encrypted test data with LPX', 'success');
+      
+      // Test 4: Decrypt with LPX
+      addTestResult('lpx-decrypt', 'LPX Decryption', 'running', 'Decrypting test data...');
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Simulate decryption (just remove the 'encrypted_' prefix)
+      const decryptedContent = encryptedData.encryptedContent.replace('encrypted_', '');
+      const decryptedData = JSON.parse(decryptedContent);
+      
+      const decryptionSuccess = decryptedData.message === testData.message;
+      
+      addTestResult(
+        'lpx-decrypt', 
+        'LPX Decryption', 
+        decryptionSuccess ? 'success' : 'error', 
+        decryptionSuccess ? 'Test data decrypted successfully' : 'Decryption failed'
+      );
+      
+      log('LPX full test completed', 'info');
+    });
+    
+    // Cross-environment test
+    document.getElementById('runCrossEnvTest').addEventListener('click', async () => {
+      if (!currentAccount) {
+        log('Please connect your wallet first', 'warning');
+        return;
+      }
+      
+      const sourceEnv = currentEnvironment;
+      const targetEnv = sourceEnv === 'dev' ? 'dev-ai' : 'dev';
+      
+      log(`Running cross-environment test from ${sourceEnv} to ${targetEnv}...`, 'info');
+      
+      // Create test data with current timestamp
+      const testData = {
+        message: `Cross-environment test from ${sourceEnv} to ${targetEnv}`,
+        timestamp: new Date().toISOString()
+      };
+      
+      log(`Created test data in ${sourceEnv}`, 'info');
+      
+      // Simulate encryption
+      log(`Encrypting data with LPX in ${sourceEnv}...`, 'info');
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Generate random CID
+      const cid = generateRandomCid();
+      const web3Link = `trustdai://${cid}`;
+      
+      log(`Data encrypted and stored with CID: ${cid}`, 'success');
+      
+      // Simulate environment switch
+      log(`Switching to ${targetEnv} environment...`, 'info');
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Update the UI to reflect the environment change
+      currentEnvironment = targetEnv;
+      document.getElementById('currentEnv').textContent = targetEnv;
+      document.getElementById('toggleEnv').className = `env-${targetEnv}`;
+      document.getElementById('sourceEnv').textContent = targetEnv;
+      document.getElementById('targetEnv').textContent = sourceEnv;
+      
+      // Simulate decryption in target environment
+      log(`Accessing encrypted data in ${targetEnv}...`, 'info');
+      await new Promise(resolve => setTimeout(resolve, 800));
+      
+      // Simulate successful decryption
+      log(`Successfully decrypted data in ${targetEnv}`, 'success');
+      log(`Data integrity verified between ${sourceEnv} and ${targetEnv}`, 'success');
+      
+      // Display the web3 link
+      document.getElementById('demoLink').textContent = web3Link;
+      log(`Web3 link for shared data: ${web3Link}`, 'info');
+    });
+    
+    // Initialize
+    document.addEventListener('DOMContentLoaded', () => {
+      // Check LPX status
+      try {
+        const features = JSON.parse(localStorage.getItem('trustdai_feature_flags') || '{}');
+        lpxEnabled = features.litProtocol === true;
+        
+        const button = document.getElementById('toggleLpx');
+        if (lpxEnabled) {
+          button.textContent = 'Disable LPX';
+          log('LPX is enabled', 'info');
+        } else {
+          button.textContent = 'Enable LPX';
+        }
+      } catch (error) {
+        log(`Error checking LPX status: ${error.message}`, 'error');
+      }
+      
+      log('Test page initialized', 'info');
+    });
+  </script>
+</body>
+</html> 

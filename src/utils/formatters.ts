@@ -66,14 +66,87 @@ export const formatDate = (timestamp?: string | number, includeTime = false): st
 };
 
 /**
- * Creates a short web3 link from a CID
- * @param cid Content identifier
- * @param prefix Protocol prefix
- * @returns Formatted web3 link
+ * Creates a properly formatted web3 link using Web3URL standards
+ * @param cid Content identifier or file path
+ * @param filename Optional filename to use in the path
+ * @returns Direct, clickable link to the file in EthStorage
  */
-export const formatWeb3Link = (cid: string, prefix = 'trustdai://'): string => {
+export const formatWeb3Link = (cid: string, filename?: string): string => {
   if (!cid) return '';
-  return `${prefix}${cid.substring(0, 8)}`;
+  return getShareableUrl(cid, filename);
+};
+
+/**
+ * Generates a shareable URL for a file using Web3URL format
+ * @param cid Content identifier or file path
+ * @param filename Optional filename to use in the path
+ * @returns Shareable Web3URL that can be opened in a browser
+ */
+export const getShareableUrl = (cid: string, filename?: string): string => {
+  if (!cid) return '';
+  
+  // Get EthStorage gateway endpoint - ensure it DOES NOT end with a slash
+  const ethStorageEndpoint = (import.meta.env.VITE_ETHSTORAGE_ENDPOINT || 'https://eth.sep.w3link.io').replace(/\/$/, '');
+  
+  // Get FlatDirectory contract address from environment variables
+  const flatDirectoryAddress = import.meta.env.VITE_FLAT_DIRECTORY_ADDRESS;
+  
+  // For ENS names
+  const ensName = import.meta.env.VITE_ENS_NAME;
+  
+  // Create file path - use filename if provided, otherwise use CID as filename
+  const filePath = filename || cid;
+  
+  // W3link gateway has two formats:
+  // 1. Subdomain format: https://[contractAddress].[network].w3link.io/[path]
+  // 2. Path format: https://eth.sep.w3link.io/ethereum:[contractAddress]/[path]
+  
+  // First, try the subdomain format which may work better
+  const useAlternateFormat = import.meta.env.VITE_USE_SUBDOMAIN_FORMAT === 'true';
+  
+  // If we have an ENS name, use that for more user-friendly URLs
+  if (ensName) {
+    return `${ethStorageEndpoint}/${ensName}/${filePath}`;
+  }
+  
+  // If we have a FlatDirectory contract address, use the correct format
+  if (flatDirectoryAddress) {
+    if (useAlternateFormat) {
+      // Try subdomain format: https://[contractAddress].sep.w3link.io/[path]
+      // Extract parts from the endpoint
+      const urlParts = ethStorageEndpoint.split('//');
+      const protocol = urlParts[0] + '//';
+      const domainParts = urlParts[1].split('.');
+      
+      // If the endpoint is eth.sep.w3link.io, we can use contract.sep.w3link.io
+      if (domainParts.length >= 3 && domainParts[1] === 'sep' && domainParts[2] === 'w3link') {
+        // Replace the first part (eth) with the contract address
+        domainParts[0] = flatDirectoryAddress.toLowerCase().replace('0x', '');
+        return `${protocol}${domainParts.join('.')}/${filePath}`;
+      }
+    }
+    
+    // Default to path format: https://eth.sep.w3link.io/ethereum:[address]/[path]
+    return `${ethStorageEndpoint}/ethereum:${flatDirectoryAddress}/${filePath}`;
+  }
+  
+  // Fallback: For IPFS CIDs, use the ipfs prefix
+  if (cid.startsWith('Qm')) {
+    return `${ethStorageEndpoint}/ipfs/${cid}`;
+  }
+  
+  // Last resort fallback - direct gateway path
+  return `${ethStorageEndpoint}/${cid}`;
+};
+
+/**
+ * Opens a web3 link directly
+ * @param cid Content identifier or file path
+ * @param filename Optional filename to use in the path
+ */
+export const openWeb3Link = (cid: string, filename?: string): void => {
+  const url = getShareableUrl(cid, filename);
+  window.open(url, '_blank');
 };
 
 /**
