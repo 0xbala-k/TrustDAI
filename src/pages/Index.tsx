@@ -70,6 +70,7 @@ const Index = () => {
     try {
       const account = await tokenContract.connect();
       setAccount(account);
+      await tokenContract.initializeContract();
       toast({
         title: "Wallet Connected",
         description: "Successfully connected to MetaMask",
