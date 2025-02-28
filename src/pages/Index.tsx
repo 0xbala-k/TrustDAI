@@ -1,160 +1,119 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { tokenContract } from '../services/TokenContract';
+import { trustDAIContract } from '@/services/TrustDAI.ts';
 import { addData, getData } from '../services/helpers.ts'; // Adjust import path accordingly
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"; // Added CardFooter
 import { useToast } from "@/components/ui/use-toast";
-import { Loader2, Wallet, Power } from "lucide-react";
-import { trustDAIContract } from '@/services/TrustDAI.ts';
+import { Loader2, Wallet, Power, Sun, Moon } from "lucide-react";
+import { useTheme } from "next-themes";
+
+interface Profile {
+  name: string;
+  age: string;
+}
 
 const Index = () => {
-  const [recipientAddress, setRecipientAddress] = useState('');
-  const [amount, setAmount] = useState('');
   const [account, setAccount] = useState<string | null>(null);
+  const [profiles, setProfiles] = useState<Profile[]>([]);
+  const [newProfile, setNewProfile] = useState<Profile>({ name: "", age: "" });
+  const [isAdding, setIsAdding] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { theme, setTheme } = useTheme();
 
-  // States for file operations
-  const [uploadFileId, setUploadFileId] = useState('');
-  const [uploadContent, setUploadContent] = useState('');
-  const [fileResult, setFileResult] = useState(null);
-
-  const { data: tokenData, isLoading: isLoadingTokenData } = useQuery({
-    queryKey: ['tokenData', account],
-    queryFn: () => tokenContract.getTokenData(),
-    enabled: !!account,
-  });
-
-  const { data: balance, isLoading: isLoadingBalance, refetch: refetchBalance } = useQuery({
-    queryKey: ['balance', account],
-    queryFn: () => tokenContract.getBalance(),
-    enabled: !!account,
-  });
-
-  const transferMutation = useMutation({
-    mutationFn: () => tokenContract.transfer(recipientAddress, amount),
-    onSuccess: () => {
-      toast({
-        title: "Transfer Successful",
-        description: `${amount} tokens sent to ${recipientAddress}`,
-      });
-      refetchBalance();
-      setAmount('');
-      setRecipientAddress('');
-    },
-    onError: (error) => {
-      toast({
-        title: "Transfer Failed",
-        description: error.message,
-        variant: "destructive",
-      });
-    },
-  });
-
-  const handleAccountsChanged = useCallback((accounts: string[]) => {
-    if (accounts.length > 0) {
-      setAccount(accounts[0]);
-      queryClient.invalidateQueries({ queryKey: ['balance'] });
-      queryClient.invalidateQueries({ queryKey: ['tokenData'] });
-      toast({
-        title: "Account Changed",
-        description: `Switched to account: ${accounts[0].slice(0, 6)}...${accounts[0].slice(-4)}`,
-      });
-    } else {
-      setAccount(null);
-      toast({
-        title: "Disconnected",
-        description: "No account connected",
-        variant: "destructive",
-      });
-    }
-  }, [queryClient, toast]);
-
+  // Wallet Connection (from your working version)
   const handleConnect = async () => {
     try {
       const account = await trustDAIContract.connect();
       setAccount(account);
-      await trustDAIContract.initializeContract();
-      toast({
-        title: "Wallet Connected",
-        description: "Successfully connected to MetaMask",
-      });
-    } catch (error) {
-      toast({
-        title: "Connection Failed",
-        description: error.message,
-        variant: "destructive",
-      });
+      await trustDAIContract.initializeContract(); // Assuming this sets up the contract
+      toast({ title: "Wallet Connected", description: "Successfully connected to MetaMask" });
+    } catch (error: any) {
+      toast({ title: "Connection Failed", description: error.message, variant: "destructive" });
     }
   };
 
   const handleDisconnect = async () => {
-    await tokenContract.disconnect();
+    await trustDAIContract.disconnect();
     setAccount(null);
-    window.ethereum.removeListener('accountsChanged', handleAccountsChanged);
-    toast({
-      title: "Wallet Disconnected",
-      description: "Successfully disconnected from MetaMask",
-    });
+    setProfiles([]);
+    toast({ title: "Wallet Disconnected", description: "Successfully disconnected from MetaMask" });
+  };
+
+  // Fetch CIDs from TrustDAI
+  const { data: cids, isLoading } = useQuery({
+    queryKey: ["userFiles", account],
+    queryFn: async () => {
+      // Assuming tokenContract provides a way to call TrustDAI methods
+      return (await trustDAIContract.getUserFiles()) as string[];
+    },
+    enabled: !!account,
+  });
+
+  // Fetch Profiles from IPFS (no decryption)
+  const fetchProfiles = async (cids: string[]): Promise<Profile[]> => {
+    const fetchedProfiles: Profile[] = [];
+    for (const cid of cids) {
+      try {
+        const response = await fetch(`https://ipfs.io/ipfs/${cid}`);
+        if (!response.ok) throw new Error(`Failed to fetch CID ${cid}`);
+        const profileJson = await response.text();
+        const profile = JSON.parse(profileJson) as Profile;
+        fetchedProfiles.push(profile);
+      } catch (error: any) {
+        console.error(`Failed to fetch CID ${cid}:`, error);
+        toast({ title: "Profile Fetch Failed", description: `CID: ${cid}`, variant: "destructive" });
+      }
+    }
+    return fetchedProfiles;
   };
 
   useEffect(() => {
-    const checkConnection = async () => {
-      try {
-        const [account] = await window.ethereum.request({ method: 'eth_accounts' });
-        if (account) {
-          setAccount(account);
-        }
-      } catch (error) {
-        console.error('Error checking connection:', error);
-      }
-    };
-    
-    checkConnection();
-
-    if (window.ethereum) {
-      window.ethereum.on('accountsChanged', handleAccountsChanged);
-      
-      return () => {
-        window.ethereum.removeListener('accountsChanged', handleAccountsChanged);
-      };
+    if (cids && account) {
+      fetchProfiles(cids).then(setProfiles).catch((err) =>
+        toast({ title: "Fetch Failed", description: err.message, variant: "destructive" })
+      );
     }
-  }, [handleAccountsChanged]);
+  }, [cids, account]);
 
-  // Handlers for file operations
-  const handleAddData = async () => {
+  // Add New Profile
+  const addProfile = async () => {
+    if (!newProfile.name || !newProfile.age) {
+      toast({ title: "Error", description: "All fields are required", variant: "destructive" });
+      return;
+    }
+
+    setIsAdding(true);
     try {
-      await addData([{ fileID: uploadFileId, data: uploadContent }]);
-      toast({
-        title: 'Data Uploaded',
-        description: 'File data uploaded successfully.',
+      const profileJson = JSON.stringify(newProfile);
+      const blob = new Blob([profileJson], { type: "application/json" });
+      const formData = new FormData();
+      formData.append("file", blob);
+      const ipfsResponse = await fetch("https://ipfs.infura.io:5001/api/v0/add", {
+        method: "POST",
+        body: formData,
       });
-      setUploadFileId('');
-      setUploadContent('');
-    } catch (error) {
-      console.error('Error uploading data:', error);
-      toast({
-        title: 'Upload Failed',
-        description: error.message,
-        variant: 'destructive',
-      });
+      if (!ipfsResponse.ok) throw new Error("IPFS upload failed");
+      const ipfsData = await ipfsResponse.json();
+      const cid = ipfsData.Hash;
+
+      // Use tokenContract to call addFile
+      await trustDAIContract.addFile(cid);
+
+      toast({ title: "Profile Added", description: `CID: ${cid}` });
+      setNewProfile({ name: "", age: "" });
+      queryClient.invalidateQueries({ queryKey: ["userFiles", account] });
+    } catch (error: any) {
+      toast({ title: "Failed to Add Profile", description: error.message, variant: "destructive" });
+    } finally {
+      setIsAdding(false);
     }
   };
 
-  const handleGetData = async () => {
-    try {
-      const data = await getData();
-      setFileResult(data);
-    } catch (error) {
-      console.error('Error getting data:', error);
-      toast({
-        title: 'Fetch Failed',
-        description: error.message,
-        variant: 'destructive',
-      });
-    }
+  const toggleTheme = () => {
+    setTheme(theme === "dark" ? "light" : "dark");
   };
 
   return (
@@ -165,7 +124,19 @@ const Index = () => {
             Connected: {account.slice(0, 6)}...{account.slice(-4)}
           </p>
         )}
-        <div>
+        <div className="flex items-center space-x-4">
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={toggleTheme}
+            className="glass"
+          >
+            {theme === "dark" ? (
+              <Sun className="h-4 w-4" />
+            ) : (
+              <Moon className="h-4 w-4" />
+            )}
+          </Button>
           {!account ? (
             <Button variant="outline" onClick={handleConnect} className="glass">
               <Wallet className="mr-2 h-4 w-4" />
@@ -180,132 +151,73 @@ const Index = () => {
         </div>
       </div>
 
-      <Card className="glass animate-fadeIn">
-        <CardHeader>
-          <CardTitle className="text-3xl font-light">
-            {isLoadingTokenData ? (
-              <Loader2 className="h-6 w-6 animate-spin" />
-            ) : (
-              `${tokenData?.name || 'Connect Wallet'} ${tokenData?.symbol ? `(${tokenData.symbol})` : ''}`
-            )}
-          </CardTitle>
-          <CardDescription>Transfer tokens to another address</CardDescription>
-        </CardHeader>
-        {account ? (
-          <>
-            <CardContent className="space-y-6">
-              <div className="bg-primary/5 p-4 rounded-lg">
-                <p className="text-sm text-muted-foreground">Your Balance</p>
-                <p className="text-3xl font-semibold">
-                  {isLoadingBalance ? (
-                    <Loader2 className="h-6 w-6 animate-spin" />
-                  ) : (
-                    `${balance || '0'} ${tokenData?.symbol || ''}`
-                  )}
-                </p>
+      {account && (
+        <>
+          <Card className="glass animate-fadeIn">
+            <CardHeader>
+              <CardTitle>Your Profiles</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {isLoading ? (
+                <Loader2 className="h-6 w-6 animate-spin mx-auto" />
+              ) : profiles.length === 0 ? (
+                <p className="text-muted-foreground">No profiles found.</p>
+              ) : (
+                profiles.map((profile, i) => (
+                  <div key={i} className="border-b pb-2">
+                    <p><strong>Name:</strong> {profile.name || "N/A"}</p>
+                    <p><strong>Age:</strong> {profile.age || "N/A"}</p>
+                  </div>
+                ))
+              )}
+            </CardContent>
+          </Card>
+
+          <Card className="glass animate-fadeIn animation-delay-200">
+            <CardHeader>
+              <CardTitle>Add New Profile</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <label className="text-sm font-medium mb-2 block">Name</label>
+                <Input
+                  placeholder="John Doe"
+                  value={newProfile.name}
+                  onChange={(e) => setNewProfile({ ...newProfile, name: e.target.value })}
+                  className="glass"
+                  disabled={isAdding}
+                />
               </div>
-
-              <div className="space-y-4">
-                <div>
-                  <label className="text-sm font-medium mb-2 block">
-                    Recipient Address
-                  </label>
-                  <Input
-                    placeholder="0x..."
-                    value={recipientAddress}
-                    onChange={(e) => setRecipientAddress(e.target.value)}
-                    className="glass"
-                  />
-                </div>
-
-                <div>
-                  <label className="text-sm font-medium mb-2 block">
-                    Amount
-                  </label>
-                  <Input
-                    type="number"
-                    placeholder="0.0"
-                    value={amount}
-                    onChange={(e) => setAmount(e.target.value)}
-                    className="glass"
-                  />
-                </div>
+              <div>
+                <label className="text-sm font-medium mb-2 block">Age</label>
+                <Input
+                  type="number"
+                  placeholder="30"
+                  value={newProfile.age}
+                  onChange={(e) => setNewProfile({ ...newProfile, age: e.target.value })}
+                  className="glass"
+                  disabled={isAdding}
+                />
               </div>
             </CardContent>
             <CardFooter>
-              <Button 
+              <Button
                 className="w-full"
-                onClick={() => transferMutation.mutate()}
-                disabled={!recipientAddress || !amount || transferMutation.isPending}
+                onClick={addProfile}
+                disabled={isAdding || !newProfile.name || !newProfile.age}
               >
-                {transferMutation.isPending ? (
+                {isAdding ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Sending...
+                    Saving...
                   </>
                 ) : (
-                  'Send Tokens'
+                  "Add Profile"
                 )}
               </Button>
             </CardFooter>
-          </>
-        ) : (
-          <CardContent className="text-center py-8">
-            <p className="text-muted-foreground">
-              Connect your wallet to view token details and make transfers
-            </p>
-          </CardContent>
-        )}
-      </Card>
-
-      {/* File Operations Section */}
-      <Card className="glass animate-fadeIn mt-8">
-        <CardHeader>
-          <CardTitle className="text-2xl">File Operations</CardTitle>
-          <CardDescription>Upload and retrieve file data</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div>
-            <label htmlFor="uploadFileId" className="block text-sm font-medium mb-1">
-              File ID
-            </label>
-            <Input
-              id="uploadFileId"
-              placeholder="Enter File ID"
-              value={uploadFileId}
-              onChange={(e) => setUploadFileId(e.target.value)}
-              className="glass"
-            />
-          </div>
-          <div>
-            <label htmlFor="uploadContent" className="block text-sm font-medium mb-1">
-              Data
-            </label>
-            <Input
-              id="uploadContent"
-              placeholder="Enter Data"
-              value={uploadContent}
-              onChange={(e) => setUploadContent(e.target.value)}
-              className="glass"
-            />
-          </div>
-        </CardContent>
-        <CardFooter className="flex justify-between">
-          <Button onClick={handleAddData}>Upload Data</Button>
-          <Button onClick={handleGetData}>Get Data</Button>
-        </CardFooter>
-      </Card>
-
-      {/* Display Retrieved File Data */}
-      {fileResult && (
-        <Card className="glass animate-fadeIn mt-4">
-          <CardHeader>
-            <CardTitle>Retrieved Data</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <pre>{JSON.stringify(fileResult, null, 2)}</pre>
-          </CardContent>
-        </Card>
+          </Card>
+        </>
       )}
     </div>
   );
