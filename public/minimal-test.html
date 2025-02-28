@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Minimal React Test</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      line-height: 1.5;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    .success { color: green; }
+    .error { color: red; }
+    .info { color: blue; }
+    #log {
+      background-color: #f5f5f5;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      padding: 10px;
+      margin-top: 20px;
+      font-family: monospace;
+      max-height: 300px;
+      overflow-y: auto;
+    }
+  </style>
+</head>
+<body>
+  <h1>Minimal React Test</h1>
+  <p>This page tests if React can be loaded and render properly without using the main application code.</p>
+  
+  <div id="react-root"></div>
+  
+  <div>
+    <button id="test-react">Test React</button>
+    <button id="check-vite">Check Vite</button>
+  </div>
+  
+  <div id="log"></div>
+  
+  <script type="module">
+    // Log function
+    function log(message, type = 'info') {
+      const logElement = document.getElementById('log');
+      const entry = document.createElement('div');
+      entry.className = type;
+      entry.textContent = message;
+      logElement.appendChild(entry);
+      console.log(`[${type}] ${message}`);
+    }
+    
+    log('Page loaded');
+    
+    // React test button
+    document.getElementById('test-react').addEventListener('click', async () => {
+      log('Testing React...');
+      try {
+        // Dynamic import React
+        const React = await import('react');
+        log('React loaded successfully', 'success');
+        
+        // Dynamic import ReactDOM
+        const ReactDOM = await import('react-dom/client');
+        log('ReactDOM loaded successfully', 'success');
+        
+        // Create a simple React element
+        const element = React.default.createElement(
+          'div', 
+          { style: { padding: '20px', backgroundColor: '#e6f7ff', borderRadius: '4px', marginTop: '20px' } },
+          [
+            React.default.createElement('h2', {}, 'React Test Successful'),
+            React.default.createElement('p', {}, 'If you can see this, React is working correctly.')
+          ]
+        );
+        
+        // Render the element
+        const container = document.getElementById('react-root');
+        const root = ReactDOM.default.createRoot(container);
+        root.render(element);
+        
+        log('React rendering successful', 'success');
+      } catch (error) {
+        log(`React test failed: ${error.message}`, 'error');
+        console.error('React test error:', error);
+      }
+    });
+    
+    // Vite check button
+    document.getElementById('check-vite').addEventListener('click', () => {
+      log('Checking Vite environment...');
+      
+      try {
+        // Check if we're in development mode
+        const isDev = window.location.hostname === 'localhost' || 
+                     window.location.hostname === '127.0.0.1';
+        log(`Development mode: ${isDev}`, isDev ? 'success' : 'info');
+        
+        // Check for Vite client
+        const viteClientScript = document.querySelector('script[src*="@vite/client"]');
+        if (viteClientScript) {
+          log('Vite client script detected', 'success');
+        } else {
+          log('Vite client script not found', 'error');
+        }
+        
+        // Check for HMR
+        if (window.HMR !== undefined) {
+          log('HMR is available', 'success');
+        } else {
+          log('HMR not detected', 'info');
+        }
+        
+        // List import.meta properties if available
+        if (typeof import.meta !== 'undefined') {
+          log('import.meta is available', 'success');
+          const properties = Object.keys(import.meta).join(', ');
+          log(`import.meta properties: ${properties || 'none'}`, 'info');
+        } else {
+          log('import.meta is not available', 'error');
+        }
+      } catch (error) {
+        log(`Vite check error: ${error.message}`, 'error');
+        console.error('Vite check error:', error);
+      }
+    });
+    
+    // Initial setup
+    log('Minimal test page initialized', 'info');
+  </script>
+</body>
+</html> 

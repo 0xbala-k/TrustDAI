@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TrustDAI - Basic Test</title>
+    <meta name="description" content="Basic React test for TrustDAI" />
+    <style>
+      body {
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        margin: 0;
+        padding: 0;
+      }
+      
+      #loading-message {
+        padding: 20px;
+        text-align: center;
+        color: #666;
+      }
+      
+      #error-container {
+        padding: 15px;
+        margin: 20px;
+        background-color: #ffebee;
+        border-left: 4px solid #f44336;
+        display: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="loading-message">
+      <p>Loading basic React application...</p>
+    </div>
+    
+    <div id="error-container"></div>
+    
+    <div id="root"></div>
+    
+    <script>
+      // Error handler
+      window.addEventListener('error', function(event) {
+        console.error('Global error:', event.error);
+        const errorContainer = document.getElementById('error-container');
+        errorContainer.style.display = 'block';
+        errorContainer.innerHTML += `<p>${event.error?.message || 'Unknown error'}</p>`;
+      });
+      
+      // Remove loading message once content loads
+      window.addEventListener('DOMContentLoaded', function() {
+        // Set a timeout to hide the loading message
+        setTimeout(function() {
+          const loadingMessage = document.getElementById('loading-message');
+          if (loadingMessage && document.getElementById('root').children.length > 0) {
+            loadingMessage.style.display = 'none';
+          }
+        }, 1000);
+      });
+    </script>
+    
+    <!-- Load the basic app instead of the main app -->
+    <script type="module" src="/src/basic-app.tsx"></script>
+  </body>
+</html> 

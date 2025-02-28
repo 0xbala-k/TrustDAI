@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { tokenContract } from '../services/TokenContract';
@@ -6,7 +5,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/components/ui/use-toast";
-import { Loader2, Wallet, Power } from "lucide-react";
+import { Loader2, Wallet, Power, FileText, CreditCard, Settings, InfoIcon, BeakerIcon, AlertCircle } from "lucide-react";
+import { Link } from "react-router-dom";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 const Index = () => {
   const [recipientAddress, setRecipientAddress] = useState('');
@@ -118,110 +119,154 @@ const Index = () => {
   }, [handleAccountsChanged]);
 
   return (
-    <div className="container max-w-2xl mx-auto p-6 space-y-8">
-      <div className="flex justify-between items-center">
-        {account && (
-          <p className="text-sm text-muted-foreground font-mono">
-            Connected: {account.slice(0, 6)}...{account.slice(-4)}
-          </p>
-        )}
-        <div>
-          {!account ? (
-            <Button
-              variant="outline"
-              onClick={handleConnect}
-              className="glass"
-            >
-              <Wallet className="mr-2 h-4 w-4" />
-              Connect Wallet
-            </Button>
-          ) : (
-            <Button
-              variant="outline"
-              onClick={handleDisconnect}
-              className="glass"
-            >
-              <Power className="mr-2 h-4 w-4" />
-              Disconnect
-            </Button>
-          )}
-        </div>
-      </div>
-
-      <Card className="glass animate-fadeIn">
+    <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-r from-blue-500 to-purple-600 p-4">
+      <Alert className="mb-4 w-full max-w-md bg-blue-100 border-blue-200">
+        <AlertCircle className="h-4 w-4 text-blue-600" />
+        <AlertTitle>Need help?</AlertTitle>
+        <AlertDescription>
+          Having issues with the application? Visit the <Link to="/debug" className="font-medium underline text-blue-600">Debug Page</Link> to check your connection status and troubleshoot.
+        </AlertDescription>
+      </Alert>
+      
+      <Card className="glass w-full max-w-md">
         <CardHeader>
-          <CardTitle className="text-3xl font-light">
-            {isLoadingTokenData ? (
-              <Loader2 className="h-6 w-6 animate-spin" />
-            ) : (
-              `${tokenData?.name || 'Connect Wallet'} ${tokenData?.symbol ? `(${tokenData.symbol})` : ''}`
-            )}
-          </CardTitle>
-          <CardDescription>Transfer tokens to another address</CardDescription>
+          <CardTitle className="text-center text-2xl">TrustDAI</CardTitle>
+          <CardDescription className="text-center">
+            Decentralized File Management
+          </CardDescription>
         </CardHeader>
-        {account ? (
-          <>
-            <CardContent className="space-y-6">
-              <div className="bg-primary/5 p-4 rounded-lg">
-                <p className="text-sm text-muted-foreground">Your Balance</p>
-                <p className="text-3xl font-semibold">
-                  {isLoadingBalance ? (
-                    <Loader2 className="h-6 w-6 animate-spin" />
-                  ) : (
-                    `${balance || '0'} ${tokenData?.symbol || ''}`
-                  )}
-                </p>
-              </div>
-
-              <div className="space-y-4">
-                <div>
-                  <label className="text-sm font-medium mb-2 block">
-                    Recipient Address
-                  </label>
-                  <Input
-                    placeholder="0x..."
-                    value={recipientAddress}
-                    onChange={(e) => setRecipientAddress(e.target.value)}
-                    className="glass"
-                  />
-                </div>
-
-                <div>
-                  <label className="text-sm font-medium mb-2 block">
-                    Amount
-                  </label>
-                  <Input
-                    type="number"
-                    placeholder="0.0"
-                    value={amount}
-                    onChange={(e) => setAmount(e.target.value)}
-                    className="glass"
-                  />
-                </div>
-              </div>
-            </CardContent>
-            <CardFooter>
-              <Button 
-                className="w-full"
-                onClick={() => transferMutation.mutate()}
-                disabled={!recipientAddress || !amount || transferMutation.isPending}
+        <CardContent className="space-y-4">
+          <div className="flex justify-between items-center">
+            {account && (
+              <p className="text-sm text-muted-foreground font-mono">
+                Connected: {account.slice(0, 6)}...{account.slice(-4)}
+              </p>
+            )}
+            <div className="flex space-x-4">
+              <Button
+                variant="outline"
+                asChild
+                className="glass"
               >
-                {transferMutation.isPending ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Sending...
-                  </>
-                ) : (
-                  'Send Tokens'
-                )}
+                <Link to="/files">
+                  <FileText className="mr-2 h-4 w-4" />
+                  File Manager
+                </Link>
               </Button>
-            </CardFooter>
-          </>
-        ) : (
-          <CardContent className="text-center py-8">
-            <p className="text-muted-foreground">Connect your wallet to view token details and make transfers</p>
-          </CardContent>
-        )}
+              {!account ? (
+                <Button
+                  variant="outline"
+                  onClick={handleConnect}
+                  className="glass"
+                >
+                  <Wallet className="mr-2 h-4 w-4" />
+                  Connect Wallet
+                </Button>
+              ) : (
+                <Button
+                  variant="outline"
+                  onClick={handleDisconnect}
+                  className="glass"
+                >
+                  <Power className="mr-2 h-4 w-4" />
+                  Disconnect
+                </Button>
+              )}
+            </div>
+          </div>
+
+          <Card className="glass animate-fadeIn">
+            <CardHeader>
+              <CardTitle className="text-3xl font-light">
+                {isLoadingTokenData ? (
+                  <Loader2 className="h-6 w-6 animate-spin" />
+                ) : (
+                  `${tokenData?.name || 'Connect Wallet'} ${tokenData?.symbol ? `(${tokenData.symbol})` : ''}`
+                )}
+              </CardTitle>
+              <CardDescription>Transfer tokens to another address</CardDescription>
+            </CardHeader>
+            {account ? (
+              <>
+                <CardContent className="space-y-6">
+                  <div className="bg-primary/5 p-4 rounded-lg">
+                    <p className="text-sm text-muted-foreground">Your Balance</p>
+                    <p className="text-3xl font-semibold">
+                      {isLoadingBalance ? (
+                        <Loader2 className="h-6 w-6 animate-spin" />
+                      ) : (
+                        `${balance || '0'} ${tokenData?.symbol || ''}`
+                      )}
+                    </p>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div>
+                      <label className="text-sm font-medium mb-2 block">
+                        Recipient Address
+                      </label>
+                      <Input
+                        placeholder="0x..."
+                        value={recipientAddress}
+                        onChange={(e) => setRecipientAddress(e.target.value)}
+                        className="glass"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-sm font-medium mb-2 block">
+                        Amount
+                      </label>
+                      <Input
+                        type="number"
+                        placeholder="0.0"
+                        value={amount}
+                        onChange={(e) => setAmount(e.target.value)}
+                        className="glass"
+                      />
+                    </div>
+                  </div>
+                </CardContent>
+                <CardFooter>
+                  <Button 
+                    className="w-full"
+                    onClick={() => transferMutation.mutate()}
+                    disabled={!recipientAddress || !amount || transferMutation.isPending}
+                  >
+                    {transferMutation.isPending ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Sending...
+                      </>
+                    ) : (
+                      'Send Tokens'
+                    )}
+                  </Button>
+                </CardFooter>
+              </>
+            ) : (
+              <CardContent className="text-center py-8">
+                <p className="text-muted-foreground">Connect your wallet to view token details and make transfers</p>
+              </CardContent>
+            )}
+          </Card>
+
+          <div className="grid grid-cols-2 gap-2">
+            <Button variant="outline" asChild className="glass">
+              <Link to="/files">
+                <FileText className="mr-2 h-4 w-4" />
+                File Manager
+              </Link>
+            </Button>
+            
+            <Button variant="outline" asChild className="glass">
+              <Link to="/test">
+                <InfoIcon className="mr-2 h-4 w-4" />
+                Test Connection
+              </Link>
+            </Button>
+          </div>
+        </CardContent>
       </Card>
     </div>
   );

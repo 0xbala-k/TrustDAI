@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vite Module Resolution Test</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 20px;
+      line-height: 1.5;
+    }
+    #log {
+      background-color: #f5f5f5;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      padding: 10px;
+      margin-top: 10px;
+      font-family: monospace;
+      white-space: pre-wrap;
+      max-height: 300px;
+      overflow-y: auto;
+    }
+    .success { color: green; }
+    .error { color: red; }
+    .info { color: blue; }
+    button {
+      padding: 8px 15px;
+      margin: 5px;
+      border-radius: 4px;
+      background-color: #f0f0f0;
+      border: 1px solid #ddd;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #e0e0e0;
+    }
+    #fix-section {
+      margin-top: 20px;
+      padding: 15px;
+      background-color: #f9f9f9;
+      border-radius: 4px;
+      border: 1px solid #eee;
+    }
+  </style>
+</head>
+<body>
+  <h1>Vite Module Resolution Test</h1>
+  <p>This page tests how Vite resolves different modules to diagnose the issue with React.</p>
+  
+  <div>
+    <button id="check-environment">Check Environment</button>
+    <button id="test-vite-client">Test Vite Client</button>
+    <button id="test-npm-modules">Test Node Modules</button>
+    <button id="test-react-explicit">Test React (Explicit Path)</button>
+    <button id="diagnose-all">Run All Tests</button>
+  </div>
+  
+  <div id="log"></div>
+  
+  <div id="fix-section" style="display: none;">
+    <h2>Recommended Fixes</h2>
+    <div id="fix-recommendations"></div>
+    <button id="apply-fix">Apply Quick Fix</button>
+  </div>
+  
+  <script type="module">
+    // Log function
+    function log(message, type = 'info') {
+      const logElement = document.getElementById('log');
+      const entry = document.createElement('div');
+      entry.className = type;
+      entry.textContent = message;
+      logElement.appendChild(entry);
+      console.log(`[${type}] ${message}`);
+      
+      // Auto-scroll to bottom
+      logElement.scrollTop = logElement.scrollHeight;
+    }
+    
+    // Check environment info
+    document.getElementById('check-environment').addEventListener('click', () => {
+      log('--- Environment Check ---');
+      log(`User Agent: ${navigator.userAgent}`);
+      log(`Protocol: ${window.location.protocol}`);
+      log(`Hostname: ${window.location.hostname}`);
+      log(`Port: ${window.location.port}`);
+      log(`Path: ${window.location.pathname}`);
+      
+      // Check if running in Vite dev mode
+      const isViteDev = document.querySelector('script[type="module"][src*="@vite/client"]');
+      log(`Vite Dev Mode: ${isViteDev ? 'Yes' : 'No'}`, isViteDev ? 'success' : 'error');
+      
+      // Check for import.meta
+      try {
+        log(`import.meta available: ${typeof import.meta !== 'undefined'}`, typeof import.meta !== 'undefined' ? 'success' : 'error');
+        if (typeof import.meta !== 'undefined') {
+          log(`import.meta.url: ${import.meta.url}`);
+          // Check for Vite-specific properties
+          const viteProps = Object.keys(import.meta).filter(key => key.startsWith('env') || key === 'hot' || key === 'glob');
+          log(`Vite-specific meta properties: ${viteProps.join(', ') || 'none'}`);
+        }
+      } catch (error) {
+        log(`Error checking import.meta: ${error.message}`, 'error');
+      }
+      
+      showFixSection();
+    });
+    
+    // Test Vite client
+    document.getElementById('test-vite-client').addEventListener('click', async () => {
+      log('--- Vite Client Test ---');
+      
+      // Check for Vite client script
+      const viteClientScript = document.querySelector('script[type="module"][src*="@vite/client"]');
+      if (viteClientScript) {
+        log('Vite client script found in DOM', 'success');
+        log(`Script src: ${viteClientScript.src}`);
+      } else {
+        log('Vite client script NOT found in DOM', 'error');
+      }
+      
+      // Check for HMR
+      if (typeof import.meta?.hot !== 'undefined') {
+        log('HMR (import.meta.hot) is available', 'success');
+      } else {
+        log('HMR (import.meta.hot) is NOT available', 'error');
+      }
+      
+      showFixSection();
+    });
+    
+    // Test node modules resolution
+    document.getElementById('test-npm-modules').addEventListener('click', async () => {
+      log('--- Node Modules Resolution Test ---');
+      
+      // Test resolving a few different modules
+      const modules = [
+        'react', 
+        'react-dom', 
+        'react-dom/client',
+        '/node_modules/react/index.js',
+        '/node_modules/react-dom/index.js'
+      ];
+      
+      for (const modulePath of modules) {
+        try {
+          log(`Testing import of: ${modulePath}`);
+          const module = await import(modulePath).catch(e => {
+            throw new Error(`Import failed: ${e.message}`);
+          });
+          log(`Successfully imported ${modulePath}`, 'success');
+          if (module.default) {
+            log(`Module has default export: ${typeof module.default}`);
+          } else {
+            log(`Module has named exports: ${Object.keys(module).join(', ')}`);
+          }
+        } catch (error) {
+          log(`Failed to import ${modulePath}: ${error.message}`, 'error');
+        }
+      }
+      
+      showFixSection();
+    });
+    
+    // Test React with explicit path
+    document.getElementById('test-react-explicit').addEventListener('click', async () => {
+      log('--- Testing React with Explicit Paths ---');
+      
+      // Try different possible paths for React
+      const possiblePaths = [
+        './node_modules/react/index.js',
+        '../node_modules/react/index.js',
+        '/node_modules/react/index.js',
+        '/@fs/' + window.location.pathname.split('/').slice(0, -2).join('/') + '/node_modules/react/index.js'
+      ];
+      
+      for (const path of possiblePaths) {
+        try {
+          log(`Trying to import React from: ${path}`);
+          const reactModule = await import(path).catch(e => {
+            throw new Error(`Import failed: ${e.message}`);
+          });
+          log(`Successfully loaded React from ${path}!`, 'success');
+          log(`React version: ${reactModule.default?.version || 'unknown'}`);
+          
+          // Try rendering if React was loaded
+          try {
+            const container = document.createElement('div');
+            container.id = 'react-test-container';
+            document.body.appendChild(container);
+            
+            const ReactDOM = await import('/node_modules/react-dom/client.js').catch(() => 
+              import('../node_modules/react-dom/client.js')
+            );
+            
+            const element = reactModule.default.createElement('div', {}, 'React Test Success');
+            ReactDOM.createRoot(container).render(element);
+            log('Successfully rendered React element!', 'success');
+          } catch (renderError) {
+            log(`React loaded but rendering failed: ${renderError.message}`, 'error');
+          }
+          
+          break; // Stop if we successfully loaded React
+        } catch (error) {
+          log(`Failed with ${path}: ${error.message}`, 'error');
+        }
+      }
+      
+      showFixSection();
+    });
+    
+    // Run all tests
+    document.getElementById('diagnose-all').addEventListener('click', () => {
+      log('=== Running All Diagnostic Tests ===');
+      document.getElementById('check-environment').click();
+      document.getElementById('test-vite-client').click();
+      document.getElementById('test-npm-modules').click();
+      document.getElementById('test-react-explicit').click();
+    });
+    
+    // Show fix section based on errors
+    function showFixSection() {
+      const errorCount = document.querySelectorAll('#log .error').length;
+      if (errorCount > 0) {
+        document.getElementById('fix-section').style.display = 'block';
+        const recommendations = document.getElementById('fix-recommendations');
+        
+        // Clear previous recommendations
+        recommendations.innerHTML = '';
+        
+        // Add recommendations based on errors
+        if (document.querySelector('#log .error:contains("Vite Dev Mode: No")')) {
+          recommendations.innerHTML += `
+            <p><strong>Issue:</strong> Vite dev client not detected</p>
+            <p><strong>Fix:</strong> Make sure you're running the Vite dev server and accessing the site through it</p>
+          `;
+        }
+        
+        if (document.querySelector('#log .error:contains("Failed to import react")')) {
+          recommendations.innerHTML += `
+            <p><strong>Issue:</strong> React module resolution failing</p>
+            <p><strong>Fix:</strong> This might be due to:</p>
+            <ul>
+              <li>Vite configuration issue with module resolution</li>
+              <li>Node modules not properly installed (try npm install)</li>
+              <li>Corrupted node_modules folder (try deleting and reinstalling)</li>
+            </ul>
+          `;
+        }
+        
+        if (errorCount > 2) {
+          recommendations.innerHTML += `
+            <p><strong>Quick Fix:</strong> Try the following:</p>
+            <ol>
+              <li>Stop all running Vite servers</li>
+              <li>Delete node_modules folder</li>
+              <li>Delete package-lock.json</li>
+              <li>Run npm install</li>
+              <li>Start the dev server with npm run dev</li>
+            </ol>
+          `;
+        }
+      }
+    }
+    
+    // Apply fix button
+    document.getElementById('apply-fix').addEventListener('click', () => {
+      log('Applying quick fix would execute these commands:');
+      log('1. cd /Users/ballew/Documents/repos/github.com/TrustDAI');
+      log('2. rm -rf node_modules');
+      log('3. rm -f package-lock.json');
+      log('4. npm install');
+      log('5. npm run dev');
+      
+      log('Please run these commands manually in your terminal.', 'info');
+    });
+    
+    // Initial log
+    log('Module Resolution Test Page Loaded');
+    log('Click the buttons above to run different tests');
+  </script>
+</body>
+</html> 

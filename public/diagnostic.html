@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TrustDAI Diagnostics</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      line-height: 1.5;
+      padding: 2rem;
+      max-width: 800px;
+      margin: 0 auto;
+    }
+    .card {
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      padding: 1rem;
+      margin-bottom: 1rem;
+      background-color: #f9f9f9;
+    }
+    .success { color: green; }
+    .error { color: red; }
+    .warning { color: orange; }
+    h1 { color: #333; }
+    pre {
+      background-color: #f0f0f0;
+      padding: 1rem;
+      border-radius: 4px;
+      overflow-x: auto;
+    }
+    button {
+      background-color: #0066cc;
+      color: white;
+      border: none;
+      padding: 0.5rem 1rem;
+      border-radius: 4px;
+      cursor: pointer;
+      margin-right: 0.5rem;
+      margin-bottom: 0.5rem;
+    }
+    button:hover {
+      background-color: #0055aa;
+    }
+    #log {
+      margin-top: 1rem;
+      padding: 1rem;
+      background-color: #f0f0f0;
+      border-radius: 4px;
+      font-family: monospace;
+      height: 200px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+    }
+  </style>
+</head>
+<body>
+  <h1>TrustDAI Diagnostic Tool</h1>
+  
+  <div class="card">
+    <h2>Browser Information</h2>
+    <div id="browser-info"></div>
+  </div>
+  
+  <div class="card">
+    <h2>MetaMask Check</h2>
+    <div id="metamask-check"></div>
+    <button id="connect-metamask">Connect to MetaMask</button>
+  </div>
+  
+  <div class="card">
+    <h2>DOM Structure</h2>
+    <div id="dom-check"></div>
+  </div>
+  
+  <div class="card">
+    <h2>Script Loading</h2>
+    <div id="script-check"></div>
+  </div>
+  
+  <div class="card">
+    <h2>Diagnostic Tests</h2>
+    <button id="test-dom">Test DOM Manipulation</button>
+    <button id="test-fetch">Test Fetch API</button>
+    <button id="test-localstorage">Test LocalStorage</button>
+    <button id="test-all">Run All Tests</button>
+  </div>
+  
+  <div class="card">
+    <h2>Console Log</h2>
+    <div id="log"></div>
+  </div>
+  
+  <div class="card">
+    <h2>Next Steps</h2>
+    <p>After diagnosing issues, you can:</p>
+    <ul>
+      <li><a href="/">Return to main app</a></li>
+      <li><a href="/debug" id="debug-link">Go to React Debug Page</a> (if React is working)</li>
+    </ul>
+  </div>
+
+  <script>
+    // Log function to display in our UI
+    function log(message, type = 'info') {
+      const logElem = document.getElementById('log');
+      const time = new Date().toLocaleTimeString();
+      logElem.innerHTML += `<div class="${type}">[${time}] ${message}</div>`;
+      logElem.scrollTop = logElem.scrollHeight;
+      console.log(`[${type}] ${message}`);
+    }
+    
+    // Browser information
+    function checkBrowser() {
+      const browserInfo = document.getElementById('browser-info');
+      browserInfo.innerHTML = `
+        <p>User Agent: ${navigator.userAgent}</p>
+        <p>Platform: ${navigator.platform}</p>
+        <p>Cookies Enabled: ${navigator.cookieEnabled ? 'Yes' : 'No'}</p>
+        <p>Language: ${navigator.language}</p>
+        <p>Online: ${navigator.onLine ? 'Yes' : 'No'}</p>
+      `;
+      log('Browser information gathered');
+    }
+    
+    // MetaMask check
+    function checkMetaMask() {
+      const metamaskCheck = document.getElementById('metamask-check');
+      if (typeof window.ethereum !== 'undefined') {
+        metamaskCheck.innerHTML = '<p class="success">MetaMask is installed! ✅</p>';
+        log('MetaMask detected', 'success');
+        
+        if (window.ethereum.isMetaMask) {
+          metamaskCheck.innerHTML += '<p>Confirmed to be MetaMask specifically ✅</p>';
+          log('Confirmed to be MetaMask');
+          
+          if (window.ethereum.selectedAddress) {
+            metamaskCheck.innerHTML += `<p>Already connected to account: ${window.ethereum.selectedAddress} ✅</p>`;
+            log(`Already connected to: ${window.ethereum.selectedAddress}`, 'success');
+          } else {
+            metamaskCheck.innerHTML += '<p>Not connected to any account yet ⚠️</p>';
+            log('Not connected to any account', 'warning');
+          }
+        } else {
+          metamaskCheck.innerHTML += '<p class="warning">Ethereum provider exists but may not be MetaMask ⚠️</p>';
+          log('Ethereum provider exists but may not be MetaMask', 'warning');
+        }
+      } else {
+        metamaskCheck.innerHTML = '<p class="error">MetaMask is not installed! ❌</p>';
+        log('MetaMask not detected', 'error');
+      }
+    }
+    
+    // Connect to MetaMask
+    document.getElementById('connect-metamask').addEventListener('click', async () => {
+      if (typeof window.ethereum !== 'undefined') {
+        try {
+          log('Attempting to connect to MetaMask...');
+          const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+          log(`Connected to account: ${accounts[0]}`, 'success');
+          checkMetaMask(); // Refresh the MetaMask section
+        } catch (error) {
+          log(`Error connecting to MetaMask: ${error.message}`, 'error');
+        }
+      } else {
+        log('MetaMask is not installed', 'error');
+      }
+    });
+    
+    // Check DOM structure
+    function checkDOM() {
+      const domCheck = document.getElementById('dom-check');
+      const rootElem = document.getElementById('root');
+      
+      if (rootElem) {
+        domCheck.innerHTML = '<p class="success">Root element found in the main page ✅</p>';
+        log('Root element exists', 'success');
+      } else {
+        domCheck.innerHTML = '<p class="warning">This is a diagnostic page - root element will be on the main page ℹ️</p>';
+        log('This is a diagnostic page, root element check is not applicable', 'info');
+      }
+      
+      // Check for other common elements
+      const body = document.querySelector('body');
+      domCheck.innerHTML += `<p>Body children count: ${body.children.length}</p>`;
+      log(`Body has ${body.children.length} child elements`);
+      
+      // Check for script tags
+      const scripts = document.querySelectorAll('script');
+      domCheck.innerHTML += `<p>Script tags count: ${scripts.length}</p>`;
+      log(`Found ${scripts.length} script tags`);
+    }
+    
+    // Check script loading
+    function checkScripts() {
+      const scriptCheck = document.getElementById('script-check');
+      
+      // Check if common global objects exist
+      const globals = [
+        { name: 'React', exists: typeof React !== 'undefined' },
+        { name: 'ReactDOM', exists: typeof ReactDOM !== 'undefined' },
+        { name: 'window.$RefreshReg$', exists: typeof window.$RefreshReg$ !== 'undefined' },
+        { name: 'window.$RefreshSig$', exists: typeof window.$RefreshSig$ !== 'undefined' }
+      ];
+      
+      let html = '<p>Global objects status:</p><ul>';
+      globals.forEach(g => {
+        html += `<li>${g.name}: ${g.exists ? '✅' : '❌'}</li>`;
+        log(`${g.name} ${g.exists ? 'exists' : 'does not exist'}`);
+      });
+      html += '</ul>';
+      
+      // Check for potential script errors
+      html += '<p>Check console for script errors</p>';
+      
+      scriptCheck.innerHTML = html;
+    }
+    
+    // DOM Manipulation Test
+    document.getElementById('test-dom').addEventListener('click', () => {
+      log('Testing DOM manipulation...');
+      try {
+        const testDiv = document.createElement('div');
+        testDiv.id = 'test-element';
+        testDiv.textContent = 'Test element created successfully';
+        document.body.appendChild(testDiv);
+        setTimeout(() => {
+          document.body.removeChild(testDiv);
+        }, 2000);
+        log('DOM manipulation test passed', 'success');
+      } catch (error) {
+        log(`DOM manipulation error: ${error.message}`, 'error');
+      }
+    });
+    
+    // Fetch API Test
+    document.getElementById('test-fetch').addEventListener('click', () => {
+      log('Testing Fetch API...');
+      fetch('https://jsonplaceholder.typicode.com/todos/1')
+        .then(response => response.json())
+        .then(data => {
+          log(`Fetch test passed: ${JSON.stringify(data)}`, 'success');
+        })
+        .catch(error => {
+          log(`Fetch error: ${error.message}`, 'error');
+        });
+    });
+    
+    // LocalStorage Test
+    document.getElementById('test-localstorage').addEventListener('click', () => {
+      log('Testing LocalStorage...');
+      try {
+        localStorage.setItem('test', 'diagnostic-test');
+        const retrieved = localStorage.getItem('test');
+        if (retrieved === 'diagnostic-test') {
+          log('LocalStorage test passed', 'success');
+        } else {
+          log('LocalStorage test failed - retrieved different value', 'error');
+        }
+        localStorage.removeItem('test');
+      } catch (error) {
+        log(`LocalStorage error: ${error.message}`, 'error');
+      }
+    });
+    
+    // Run all tests
+    document.getElementById('test-all').addEventListener('click', () => {
+      document.getElementById('test-dom').click();
+      document.getElementById('test-fetch').click();
+      document.getElementById('test-localstorage').click();
+    });
+    
+    // Initialize
+    window.addEventListener('DOMContentLoaded', () => {
+      log('Diagnostic page loaded');
+      checkBrowser();
+      checkMetaMask();
+      checkDOM();
+      
+      // Delay script check to ensure everything is loaded
+      setTimeout(checkScripts, 500);
+    });
+  </script>
+</body>
+</html> 

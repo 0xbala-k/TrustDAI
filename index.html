@@ -3,16 +3,143 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>token-transfer-trove</title>
-    <meta name="description" content="Lovable Generated Project" />
-    <meta name="author" content="Lovable" />
+    <title>TrustDAI</title>
+    <meta name="description" content="Decentralized File Management with Ethereum" />
+    <meta name="author" content="TrustDAI" />
     <meta property="og:image" content="/og-image.png" />
+    <!-- Disable all Vite-injected scripts temporarily to debug initialization -->
+    <script>
+      console.log('Index.html script starting...');
+      // Global error handler
+      window.addEventListener('error', (event) => {
+        console.error('Global error caught:', event.error);
+        document.getElementById('error-log').innerHTML += `<div style="color:red">${event.error?.message || 'Unknown error'}</div>`;
+      });
+      
+      // Monitor module loading errors
+      window.addEventListener('unhandledrejection', (event) => {
+        console.error('Unhandled Promise Rejection:', event.reason);
+        document.getElementById('error-log').innerHTML += `<div style="color:orange">Promise Error: ${event.reason?.message || 'Unknown promise error'}</div>`;
+      });
+      
+      console.log('Error handlers registered');
+    </script>
   </head>
 
   <body>
+    <!-- Add error display area before the root -->
+    <div id="error-log" style="padding: 10px; background-color: #fff8f8; border-left: 4px solid #ffcccb; margin-bottom: 20px; font-family: monospace; max-height: 200px; overflow: auto; display: none;"></div>
+    
+    <!-- Empty root div for React to render into -->
     <div id="root"></div>
-    <!-- IMPORTANT: DO NOT REMOVE THIS SCRIPT TAG OR THIS VERY COMMENT! -->
-    <script src="https://cdn.gpteng.co/gptengineer.js" type="module"></script>
+    
+    <!-- IMPORTANT: GPT Engineer script commented out to avoid conflicts -->
+    <!-- <script src="https://cdn.gpteng.co/gptengineer.js" type="module"></script> -->
+    
+    <!-- Diagnostic Links (always visible for testing) -->
+    <div id="diagnostic-links" style="position: fixed; bottom: 10px; right: 10px; background: #f0f0f0; padding: 10px; border-radius: 5px; border: 1px solid #ccc; z-index: 9999;">
+      <p><strong>Troubleshooting:</strong></p>
+      <ul>
+        <li><a href="/diagnostic.html">Diagnostic Page</a></li>
+        <li><a href="javascript:void(0)" onclick="loadScriptInspector()">Script Inspector</a></li>
+        <li><a href="javascript:void(0)" onclick="testReactLoading()">Test React Loading</a></li>
+        <li><a href="/" onclick="localStorage.setItem('disable_gpt_engineer', 'true'); return true;">Restart App</a></li>
+      </ul>
+    </div>
+    
+    <script>
+      console.log('Starting initialization script');
+      
+      // Function to load script inspector
+      function loadScriptInspector() {
+        console.log('Loading script inspector');
+        const script = document.createElement('script');
+        script.src = '/script-inspector.js';
+        document.body.appendChild(script);
+      }
+      
+      // Function to test React loading
+      function testReactLoading() {
+        console.log('Testing React loading');
+        const errorLog = document.getElementById('error-log');
+        errorLog.style.display = 'block';
+        
+        try {
+          errorLog.innerHTML += '<div>Testing React module loading...</div>';
+          
+          // Check if module scripts are loading
+          const moduleScripts = document.querySelectorAll('script[type="module"]');
+          errorLog.innerHTML += `<div>Found ${moduleScripts.length} module scripts</div>`;
+          
+          // Create a simple React test
+          const testScript = document.createElement('script');
+          testScript.type = 'module';
+          testScript.innerHTML = `
+            try {
+              console.log('Test script executing');
+              import React from 'react';
+              import ReactDOM from 'react-dom/client';
+              console.log('React imported:', React);
+              console.log('ReactDOM imported:', ReactDOM);
+              document.getElementById('error-log').innerHTML += '<div style="color:green">React modules successfully imported!</div>';
+              
+              // Create a simple React element
+              const TestElement = React.createElement('div', {}, 'React Test Success');
+              
+              // Create a separate test container
+              const testContainer = document.createElement('div');
+              testContainer.id = 'react-test-container';
+              testContainer.style.padding = '20px';
+              testContainer.style.margin = '20px';
+              testContainer.style.backgroundColor = '#f0f8ff';
+              testContainer.style.border = '1px solid #add8e6';
+              document.body.appendChild(testContainer);
+              
+              // Render to the test container
+              ReactDOM.createRoot(testContainer).render(TestElement);
+              document.getElementById('error-log').innerHTML += '<div style="color:green">React rendering test passed!</div>';
+            } catch (error) {
+              console.error('React test error:', error);
+              document.getElementById('error-log').innerHTML += '<div style="color:red">React test failed: ' + error.message + '</div>';
+            }
+          `;
+          document.body.appendChild(testScript);
+        } catch (error) {
+          console.error('Error in test function:', error);
+          errorLog.innerHTML += `<div style="color:red">Error in test function: ${error.message}</div>`;
+        }
+      }
+      
+      // Check if the main app script loads
+      setTimeout(() => {
+        if (document.getElementById('root').childElementCount === 0) {
+          console.log('App not loaded after timeout');
+          const errorDiv = document.createElement('div');
+          errorDiv.style.padding = '20px';
+          errorDiv.style.margin = '20px';
+          errorDiv.style.backgroundColor = '#f8f8f8';
+          errorDiv.style.border = '1px solid #ddd';
+          errorDiv.style.borderRadius = '5px';
+          errorDiv.innerHTML = `
+            <h2>App Loading Issue Detected</h2>
+            <p>The application is taking longer than expected to load.</p>
+            <p>Possible causes:</p>
+            <ul>
+              <li>Module loading failures (check console)</li>
+              <li>React initialization errors</li>
+              <li>Missing or corrupted environment variables</li>
+              <li>Network issues with Vite dev server</li>
+            </ul>
+            <p>Click "Test React Loading" in the diagnostic menu to run a minimal React test.</p>
+          `;
+          document.getElementById('root').appendChild(errorDiv);
+        }
+      }, 5000);
+      
+      console.log('Index.html script completed');
+    </script>
+    
+    <!-- Main app entry point -->
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
