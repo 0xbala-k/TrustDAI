@@ -1,6 +1,7 @@
 import { trustDAIContract } from "./TrustDAI.ts";
 import { uploadData, fetchData } from "./ethstorage.ts";
 import { encryptData, decryptData } from "./LitProtocol.js";
+import { ethers } from "ethers";
 
 // Hardcoded TrustDAI contract address
 const TRUSTDAI_CONTRACT_ADDRESS = import.meta.env.VITE_CONTRACT_ADDRESS || "0xd0EBaF6bAc19AA239853D94ec0FC0639F27eA986"; // Replace with your deployed address
@@ -108,7 +109,7 @@ export async function addData(account: string, fileType: string, data: string): 
     await uploadData(files[i].fileID,encryptedData[i])
   }
 
-  return fileID;
+  return fileType;
 }
 
 export async function deleteData(account: string, fileID: string): Promise<string> {
@@ -156,4 +157,31 @@ export async function getAccessList(account: string, fileID: string): Promise<st
   }
 
   return accessList;
+}
+
+export async function getFileData(account: string, fileID: string): Promise<string>{
+  const key = `${account}-${fileID}`;
+  const encryptedFiles = [];
+  try{
+    const encryptedData = await fetchData(key);
+    const data = encryptedData["data"]
+
+    encryptedFiles.push({
+      fileID: key,
+      cipherText: data["ciphertext"],
+      hash: data["dataToEncryptHash"]
+    });
+  } catch (error){
+    console.log("Error fetching data from EthStorage: ",error)
+  }
+
+  const signerAddress = await trustDAIContract.getSignerAddress();
+  const checkSumAddress = ethers.getAddress(signerAddress);
+  const signer = await trustDAIContract.getSigner();
+  
+
+  // decrypt data
+  const decryptedData =  await decryptData(encryptedFiles, checkSumAddress, signer)
+
+  return decryptedData;
 }
