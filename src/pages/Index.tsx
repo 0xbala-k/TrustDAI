@@ -1,8 +1,24 @@
 import { useState, useEffect } from "react";
-import { connectWallet, disconnectWallet, setupAccountChangeListener, addProfile, fetchUserFileIds, getFileData } from "../services/helpers.ts";
+import {
+  connectWallet,
+  disconnectWallet,
+  setupAccountChangeListener,
+  addProfile,
+  fetchUserFileIds,
+  getFileData,
+  grantAccess,
+  getAccessList,
+  revokeAccess,
+} from "../services/helpers.ts";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardFooter,
+} from "@/components/ui/card";
 import { useToast } from "@/components/ui/use-toast";
 import { Loader2, Wallet, Power, Sun, Moon } from "lucide-react";
 import { useTheme } from "next-themes";
@@ -26,7 +42,7 @@ const profileTypes = {
       phone: z.string().min(1, "Phone is required"),
       dateOfBirth: z.string().min(1, "Date of birth is required"),
     }),
-    description: "Store your basic personal information"
+    description: "Store your basic personal information",
   },
   address: {
     fields: [
@@ -43,7 +59,7 @@ const profileTypes = {
       postalCode: z.string().min(1, "Postal code is required"),
       country: z.string().min(1, "Country is required"),
     }),
-    description: "Save your address details"
+    description: "Save your address details",
   },
   travelData: {
     fields: [
@@ -58,7 +74,7 @@ const profileTypes = {
       visaDetails: z.string().min(1, "Visa details required"),
       preferredAirlines: z.string().min(1, "Preferred airlines required"),
     }),
-    description: "Manage your travel information"
+    description: "Manage your travel information",
   },
   blockchainWallet: {
     fields: [
@@ -73,7 +89,7 @@ const profileTypes = {
       blockchain: z.string().min(1, "Blockchain is required"),
       notes: z.string().min(1, "Notes required"),
     }),
-    description: "Track your blockchain wallets"
+    description: "Track your blockchain wallets",
   },
   socialProfile: {
     fields: [
@@ -86,7 +102,7 @@ const profileTypes = {
       username: z.string().min(1, "Username is required"),
       url: z.string().url("Invalid URL"),
     }),
-    description: "Add your social media profiles"
+    description: "Add your social media profiles",
   },
   employmentHistory: {
     fields: [
@@ -103,7 +119,7 @@ const profileTypes = {
       endDate: z.string().min(1, "End date is required"),
       description: z.string().min(1, "Description is required"),
     }),
-    description: "Record your work experience"
+    description: "Record your work experience",
   },
   educationDetails: {
     fields: [
@@ -122,8 +138,8 @@ const profileTypes = {
       endDate: z.string().min(1, "End date is required"),
       grade: z.string().min(1, "Grade is required"),
     }),
-    description: "Document your education history"
-  }
+    description: "Document your education history",
+  },
 };
 
 type ProfileType = keyof typeof profileTypes;
@@ -138,11 +154,30 @@ const Index = () => {
   const { toast } = useToast();
   const { theme, setTheme } = useTheme();
 
+  // State for managing access modal
+  const [isAccessModalOpen, setIsAccessModalOpen] = useState(false);
+  const [selectedAccessType, setSelectedAccessType] = useState<ProfileType | null>(null);
+  const [accessList, setAccessList] = useState<Record<ProfileType, string[]>>({});
+  const [newAccess, setNewAccess] = useState("");
+
+  // Initialize accessList for each profile type on mount
   useEffect(() => {
-    const initialFields = profileTypes[selectedType].fields.reduce((acc, field) => ({
-      ...acc,
-      [field.name]: ""
-    }), {});
+    if(!account) return;
+    const initialAccess: Record<ProfileType, string[]> = {} as Record<ProfileType, string[]>;
+    (Object.keys(profileTypes) as ProfileType[]).forEach(async (type) => {
+      const addresses = await getAccessList(account,type)
+      initialAccess[type] = addresses;
+    });
+    console.log("initialAccess: ",initialAccess)
+    setAccessList(initialAccess);
+  }, [account]);
+
+  useEffect(() => {
+    // Reset the form fields when the selected profile type changes
+    const initialFields = profileTypes[selectedType].fields.reduce((acc, field) => {
+      acc[field.name] = "";
+      return acc;
+    }, {} as Record<string, string>);
     setNewProfile(initialFields);
   }, [selectedType]);
 
@@ -151,9 +186,16 @@ const Index = () => {
     try {
       const account = await connectWallet();
       setAccount(account);
-      toast({ title: "Wallet Connected", description: `Connected to ${account.slice(0, 6)}...${account.slice(-4)}` });
+      toast({
+        title: "Wallet Connected",
+        description: `Connected to ${account.slice(0, 6)}...${account.slice(-4)}`,
+      });
     } catch (error: any) {
-      toast({ title: "Connection Failed", description: error.message, variant: "destructive" });
+      toast({
+        title: "Connection Failed",
+        description: error.message,
+        variant: "destructive",
+      });
     }
   };
 
@@ -164,7 +206,11 @@ const Index = () => {
       setUserFilesIds([]);
       toast({ title: "Wallet Disconnected" });
     } catch (error: any) {
-      toast({ title: "Disconnect Failed", description: error.message, variant: "destructive" });
+      toast({
+        title: "Disconnect Failed",
+        description: error.message,
+        variant: "destructive",
+      });
     }
   };
 
@@ -210,20 +256,14 @@ const Index = () => {
     // Update the selected profile type
     setSelectedType(type);
     try {
-      // Load the string data from your backend or service
       const stringData = await getFileData(account, type);
-      
-      // Ensure we have some data before parsing
       if (stringData) {
-        // Use the correct schema based on the passed type
         const parsedData = profileTypes[type].schema.parse(JSON.parse(stringData));
-        
-        // Update the form state with the parsed data to populate the form
+        // Populate the form with the loaded data
         setNewProfile(parsedData);
-        
         console.log("Parsed Data: ", parsedData);
       } else {
-        // If no data is found, optionally clear or reset the form
+        // If no data found, reset form fields for the type
         const emptyFields = profileTypes[type].fields.reduce((acc, field) => {
           acc[field.name] = "";
           return acc;
@@ -234,7 +274,6 @@ const Index = () => {
       console.error("Error loading profile data:", error);
     }
   };
-  
 
   const handleAddProfile = async () => {
     try {
@@ -242,19 +281,29 @@ const Index = () => {
       const validatedProfile = schema.parse(newProfile);
       if (!account) throw new Error("No account connected");
       setIsAdding(true);
-      
-      const fileID = await addProfile(account, selectedType, JSON.stringify(validatedProfile));
+
+      const fileID = await addProfile(
+        account,
+        selectedType,
+        JSON.stringify(validatedProfile)
+      );
       toast({ title: "Profile Added", description: `` });
-      setNewProfile(profileTypes[selectedType].fields.reduce((acc, field) => ({
-        ...acc,
-        [field.name]: ""
-      }), {}));
+      setNewProfile(
+        profileTypes[selectedType].fields.reduce((acc, field) => {
+          acc[field.name] = "";
+          return acc;
+        }, {} as Record<string, string>)
+      );
     } catch (error: any) {
       let errorMessage = error.message;
       if (error.code === 4001 || error.message.includes("user rejected")) {
         errorMessage = "You rejected the transaction.";
       }
-      toast({ title: "Failed to Add Profile", description: errorMessage, variant: "destructive" });
+      toast({
+        title: "Failed to Add Profile",
+        description: errorMessage,
+        variant: "destructive",
+      });
     } finally {
       setIsAdding(false);
     }
@@ -265,7 +314,44 @@ const Index = () => {
   };
 
   const isFormValid = () => {
-    return profileTypes[selectedType].fields.every(field => newProfile[field.name]);
+    return profileTypes[selectedType].fields.every(
+      (field) => newProfile[field.name]
+    );
+  };
+
+  // Handlers for managing access in the modal
+  const handleAddAccess = async () => {
+    if (!selectedAccessType) return;
+    if (newAccess.trim() === "") return;
+    try{
+      const tx = await grantAccess(account,selectedAccessType,newAccess);
+      console.log(tx);
+    }catch(error){
+      console.log("Error granting access. Error: ",error)
+    }
+
+    setAccessList((prev) => ({
+      ...prev,
+      [selectedAccessType]: [...(prev[selectedAccessType] || []), newAccess.trim()],
+    }));
+    setNewAccess("");
+  };
+
+  const handleRemoveAccess = async (address: string) => {
+    if (!selectedAccessType) return;
+    try{
+      const tx = await revokeAccess(account,selectedAccessType,address);
+      console.log(tx);
+    }catch(error){
+      console.log("Error granting access. Error: ",error)
+    }
+
+    setAccessList((prev) => ({
+      ...prev,
+      [selectedAccessType]: prev[selectedAccessType].filter(
+        (item) => item !== address
+      ),
+    }));
   };
 
   return (
@@ -303,33 +389,58 @@ const Index = () => {
             <CardContent className="space-y-6">
               <div>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {Object.entries(profileTypes).map(([type, { description }]) => (
-                    <DataCard
-                      key={type}
-                      title={type.split(/(?=[A-Z])/).join(" ").replace(/^\w/, c => c.toUpperCase())}
-                      description={description}
-                      onSelect={() => handleSelect(type as ProfileType)}
-                      isSelected={selectedType === type}
-                    />
-                  ))}
+                  {(Object.entries(profileTypes) as [ProfileType, typeof profileTypes[ProfileType]][]).map(
+                    ([type, { description }]) => (
+                      <div key={type} className="space-y-2">
+                        <DataCard
+                          title={type
+                            .split(/(?=[A-Z])/)
+                            .join(" ")
+                            .replace(/^\w/, (c) => c.toUpperCase())}
+                          description={description}
+                          onSelect={() => handleSelect(type)}
+                          isSelected={selectedType === type}
+                        />
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="glass w-full"
+                          onClick={() => {
+                            setSelectedAccessType(type);
+                            setIsAccessModalOpen(true);
+                          }}
+                        >
+                          Manage Access
+                        </Button>
+                      </div>
+                    )
+                  )}
                 </div>
               </div>
 
               <div className="space-y-4">
                 <h3 className="text-md font-medium">
-                  {selectedType.split(/(?=[A-Z])/).join(" ").replace(/^\w/, c => c.toUpperCase())} Fields
+                  {selectedType
+                    .split(/(?=[A-Z])/)
+                    .join(" ")
+                    .replace(/^\w/, (c) => c.toUpperCase())}{" "}
+                  Fields
                 </h3>
                 {profileTypes[selectedType].fields.map((field) => (
                   <div key={field.name}>
-                    <label className="text-sm font-medium mb-2 block">{field.label}</label>
+                    <label className="text-sm font-medium mb-2 block">
+                      {field.label}
+                    </label>
                     <Input
                       type={field.type}
                       placeholder={field.placeholder}
                       value={newProfile[field.name] || ""}
-                      onChange={(e) => setNewProfile({
-                        ...newProfile,
-                        [field.name]: e.target.value
-                      })}
+                      onChange={(e) =>
+                        setNewProfile({
+                          ...newProfile,
+                          [field.name]: e.target.value,
+                        })
+                      }
                       className="glass"
                       disabled={isAdding}
                     />
@@ -364,7 +475,9 @@ const Index = () => {
                     userFilesIds.map((fileID, i) => (
                       <div key={i} className="border-b pb-2">
                         <p className="paragraph">
-                          <span><strong>FileID:</strong> {fileID}</span>
+                          <span>
+                            <strong>FileID:</strong> {fileID}
+                          </span>
                         </p>
                       </div>
                     ))
@@ -373,8 +486,69 @@ const Index = () => {
               </Card>
             </CardFooter>
           </Card>
-          
         </>
+      )}
+
+      {/* Modal for managing access */}
+      {isAccessModalOpen && (
+        <div className="fixed inset-0 flex items-center justify-center z-50">
+          {/* Overlay */}
+          <div
+            className="absolute inset-0 bg-black opacity-50"
+            onClick={() => setIsAccessModalOpen(false)}
+          ></div>
+          {/* Modal Content */}
+          <Card className="z-10 glass max-w-md w-full">
+            <CardHeader>
+              <CardTitle>
+                Manage Access -{" "}
+                {selectedAccessType &&
+                  selectedAccessType
+                    .split(/(?=[A-Z])/)
+                    .join(" ")
+                    .replace(/^\w/, (c) => c.toUpperCase())}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {selectedAccessType && accessList[selectedAccessType] && accessList[selectedAccessType].length > 0 ? (
+                accessList[selectedAccessType].map((address, index) => (
+                  <div
+                    key={index}
+                    className="flex items-center justify-between border-b pb-2"
+                  >
+                    <span className="text-xs text-muted-foreground font-mono">{address}</span>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => handleRemoveAccess(address)}
+                    >
+                      Delete
+                    </Button>
+                  </div>
+                ))
+              ) : (
+                <p className="text-muted-foreground">No access granted yet.</p>
+              )}
+              <div className="flex space-x-2">
+                <Input
+                  type="text"
+                  placeholder="Enter address"
+                  value={newAccess}
+                  onChange={(e) => setNewAccess(e.target.value)}
+                  className="glass"
+                />
+                <Button variant="outline" onClick={handleAddAccess} className="glass">
+                  Add
+                </Button>
+              </div>
+            </CardContent>
+            <CardFooter className="flex justify-end">
+              <Button variant="outline" onClick={() => setIsAccessModalOpen(false)} className="glass">
+                Close
+              </Button>
+            </CardFooter>
+          </Card>
+        </div>
       )}
     </div>
   );
