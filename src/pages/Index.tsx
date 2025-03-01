@@ -7,28 +7,146 @@ import { useToast } from "@/components/ui/use-toast";
 import { Loader2, Wallet, Power, Sun, Moon } from "lucide-react";
 import { useTheme } from "next-themes";
 import { z } from "zod";
+import { DataCard } from "@/components/DataCard"; // Adjust path as needed
 
-interface Profile {
-  name: string;
-  age: string;
-}
+// Define profile types based on interfaces with descriptions
+const profileTypes = {
+  basicDetails: {
+    fields: [
+      { name: "firstName", label: "First Name", type: "text", placeholder: "John" },
+      { name: "lastName", label: "Last Name", type: "text", placeholder: "Doe" },
+      { name: "email", label: "Email", type: "email", placeholder: "john@example.com" },
+      { name: "phone", label: "Phone", type: "text", placeholder: "+1234567890" },
+      { name: "dateOfBirth", label: "Date of Birth", type: "date", placeholder: "YYYY-MM-DD" },
+    ],
+    schema: z.object({
+      firstName: z.string().min(1, "First name is required"),
+      lastName: z.string().min(1, "Last name is required"),
+      email: z.string().email("Invalid email"),
+      phone: z.string().min(1, "Phone is required"),
+      dateOfBirth: z.string().min(1, "Date of birth is required"),
+    }),
+    description: "Store your basic personal information"
+  },
+  address: {
+    fields: [
+      { name: "street", label: "Street", type: "text", placeholder: "123 Main St" },
+      { name: "city", label: "City", type: "text", placeholder: "New York" },
+      { name: "state", label: "State", type: "text", placeholder: "NY" },
+      { name: "postalCode", label: "Postal Code", type: "text", placeholder: "10001" },
+      { name: "country", label: "Country", type: "text", placeholder: "USA" },
+    ],
+    schema: z.object({
+      street: z.string().min(1, "Street is required"),
+      city: z.string().min(1, "City is required"),
+      state: z.string().min(1, "State is required"),
+      postalCode: z.string().min(1, "Postal code is required"),
+      country: z.string().min(1, "Country is required"),
+    }),
+    description: "Save your address details"
+  },
+  travelData: {
+    fields: [
+      { name: "passportNumber", label: "Passport Number", type: "text", placeholder: "X12345678" },
+      { name: "expiryDate", label: "Expiry Date", type: "date", placeholder: "YYYY-MM-DD" },
+      { name: "visaDetails", label: "Visa Details", type: "text", placeholder: "Visa info" },
+      { name: "preferredAirlines", label: "Preferred Airlines", type: "text", placeholder: "Delta, United" },
+    ],
+    schema: z.object({
+      passportNumber: z.string().min(1, "Passport number is required"),
+      expiryDate: z.string().min(1, "Expiry date is required"),
+      visaDetails: z.string().min(1, "Visa details required"),
+      preferredAirlines: z.string().min(1, "Preferred airlines required"),
+    }),
+    description: "Manage your travel information"
+  },
+  blockchainWallet: {
+    fields: [
+      { name: "walletName", label: "Wallet Name", type: "text", placeholder: "Main Wallet" },
+      { name: "walletAddress", label: "Wallet Address", type: "text", placeholder: "0x..." },
+      { name: "blockchain", label: "Blockchain", type: "text", placeholder: "Ethereum" },
+      { name: "notes", label: "Notes", type: "text", placeholder: "Additional info" },
+    ],
+    schema: z.object({
+      walletName: z.string().min(1, "Wallet name is required"),
+      walletAddress: z.string().min(1, "Wallet address is required"),
+      blockchain: z.string().min(1, "Blockchain is required"),
+      notes: z.string().min(1, "Notes required"),
+    }),
+    description: "Track your blockchain wallets"
+  },
+  socialProfile: {
+    fields: [
+      { name: "platform", label: "Platform", type: "text", placeholder: "Twitter" },
+      { name: "username", label: "Username", type: "text", placeholder: "@johndoe" },
+      { name: "url", label: "URL", type: "text", placeholder: "https://twitter.com/johndoe" },
+    ],
+    schema: z.object({
+      platform: z.string().min(1, "Platform is required"),
+      username: z.string().min(1, "Username is required"),
+      url: z.string().url("Invalid URL"),
+    }),
+    description: "Add your social media profiles"
+  },
+  employmentHistory: {
+    fields: [
+      { name: "company", label: "Company", type: "text", placeholder: "Tech Corp" },
+      { name: "position", label: "Position", type: "text", placeholder: "Developer" },
+      { name: "startDate", label: "Start Date", type: "date", placeholder: "YYYY-MM-DD" },
+      { name: "endDate", label: "End Date", type: "date", placeholder: "YYYY-MM-DD" },
+      { name: "description", label: "Description", type: "text", placeholder: "Job duties" },
+    ],
+    schema: z.object({
+      company: z.string().min(1, "Company is required"),
+      position: z.string().min(1, "Position is required"),
+      startDate: z.string().min(1, "Start date is required"),
+      endDate: z.string().min(1, "End date is required"),
+      description: z.string().min(1, "Description is required"),
+    }),
+    description: "Record your work experience"
+  },
+  educationDetails: {
+    fields: [
+      { name: "institution", label: "Institution", type: "text", placeholder: "University" },
+      { name: "degree", label: "Degree", type: "text", placeholder: "BSc" },
+      { name: "field", label: "Field", type: "text", placeholder: "Computer Science" },
+      { name: "startDate", label: "Start Date", type: "date", placeholder: "YYYY-MM-DD" },
+      { name: "endDate", label: "End Date", type: "date", placeholder: "YYYY-MM-DD" },
+      { name: "grade", label: "Grade", type: "text", placeholder: "3.8 GPA" },
+    ],
+    schema: z.object({
+      institution: z.string().min(1, "Institution is required"),
+      degree: z.string().min(1, "Degree is required"),
+      field: z.string().min(1, "Field is required"),
+      startDate: z.string().min(1, "Start date is required"),
+      endDate: z.string().min(1, "End date is required"),
+      grade: z.string().min(1, "Grade is required"),
+    }),
+    description: "Document your education history"
+  }
+};
 
-const profileSchema = z.object({
-  name: z.string().min(1, "Name is required").max(50, "Name too long"),
-  age: z.string().regex(/^\d+$/, "Age must be a number").transform(Number),
-  fileID: z.string().min(1, "File ID is required"),
-});
+type ProfileType = keyof typeof profileTypes;
 
 const Index = () => {
   const [account, setAccount] = useState<string | null>(null);
-  const [newProfile, setNewProfile] = useState({ name: "", age: "", fileID: "" });
+  const [selectedType, setSelectedType] = useState<ProfileType>("basicDetails");
+  const [newProfile, setNewProfile] = useState<Record<string, string>>({});
   const [userFilesIds, setUserFilesIds] = useState<string[]>([]);
   const [isAdding, setIsAdding] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
   const { theme, setTheme } = useTheme();
 
-  // Wallet Connection Handlers
+  useEffect(() => {
+    const initialFields = profileTypes[selectedType].fields.reduce((acc, field) => ({
+      ...acc,
+      [field.name]: ""
+    }), {});
+    setNewProfile(initialFields);
+  }, [selectedType]);
+
+  // Wallet Connection Handlers (unchanged)
   const handleConnect = async () => {
     try {
       const account = await connectWallet();
@@ -50,11 +168,10 @@ const Index = () => {
     }
   };
 
-  // Account Change Listener (only after connect)
   useEffect(() => {
-    if (!account) return; // Only setup listener after manual connection
+    if (!account) return;
 
-    const cleanup = setupAccountChangeListener( (accounts) => {
+    const cleanup = setupAccountChangeListener((accounts) => {
       if (accounts.length > 0) {
         setAccount(accounts[0]);
         toast({
@@ -67,12 +184,10 @@ const Index = () => {
     });
 
     return cleanup;
-  }, [account, toast]);
+  }, [account]);
 
-
-  useEffect(()=>{
-    if(account){
-      // fetch user file Ids
+  useEffect(() => {
+    if (account) {
       handleFetchUserFileIds();
     }
   }, [account]);
@@ -89,21 +204,25 @@ const Index = () => {
         setIsLoading(false);
       }
     }
-  }
+  };
 
-  // Add Profile with Editable fileID
   const handleAddProfile = async () => {
     try {
-      const validatedProfile = profileSchema.parse(newProfile);
+      const schema = profileTypes[selectedType].schema;
+      const validatedProfile = schema.parse(newProfile);
       if (!account) throw new Error("No account connected");
       setIsAdding(true);
-      const fileID = await addProfile(account, validatedProfile.fileID,  validatedProfile.name, validatedProfile.age.toString());
+      
+      const fileID = await addProfile(account, `${selectedType}-${Date.now()}`, selectedType, validatedProfile);
       toast({ title: "Profile Added", description: `ID: ${fileID}` });
-      setNewProfile({ name: "", age: "", fileID: "" });
+      setNewProfile(profileTypes[selectedType].fields.reduce((acc, field) => ({
+        ...acc,
+        [field.name]: ""
+      }), {}));
     } catch (error: any) {
       let errorMessage = error.message;
       if (error.code === 4001 || error.message.includes("user rejected")) {
-        errorMessage = "You rejected the transaction. Please approve the gas fee to add your profile.";
+        errorMessage = "You rejected the transaction.";
       }
       toast({ title: "Failed to Add Profile", description: errorMessage, variant: "destructive" });
     } finally {
@@ -113,6 +232,10 @@ const Index = () => {
 
   const toggleTheme = () => {
     setTheme(theme === "dark" ? "light" : "dark");
+  };
+
+  const isFormValid = () => {
+    return profileTypes[selectedType].fields.every(field => newProfile[field.name]);
   };
 
   return (
@@ -143,74 +266,53 @@ const Index = () => {
 
       {account && (
         <>
-          <Card className="glass animate-fadeIn">
-            <CardHeader>
-              <Button
-                variant="outline"
-                onClick={() => handleFetchUserFileIds()}
-                className="glass mb-2"
-              >
-                Refresh Profiles
-              </Button>
-              <CardTitle>Your Profiles</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {isLoading ? (
-                <Loader2 className="h-6 w-6 animate-spin mx-auto" />
-              ) : userFilesIds.length === 0 ? (
-                <p className="text-muted-foreground">No profiles found.</p>
-              ) : (
-                userFilesIds.map((fileID, i) => (
-                  <div key={i} className="border-b pb-2">
-                    <p><strong>FileID:</strong> {fileID.split('-')[1] || "N/A"}</p>
-                  </div>
-                ))
-              )}
-            </CardContent>
-          </Card>
-
           <Card className="glass animate-fadeIn animation-delay-200">
             <CardHeader>
-              <CardTitle>Add New Profile</CardTitle>
+              <CardTitle>Your Data</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-6">
               <div>
-                <label className="text-sm font-medium mb-2 block">Name</label>
-                <Input
-                  placeholder="John Doe"
-                  value={newProfile.name}
-                  onChange={(e) => setNewProfile({ ...newProfile, name: e.target.value })}
-                  className="glass"
-                  disabled={isAdding}
-                />
+                <h2 className="text-lg font-medium text-gray-900 mb-4">Profile Types</h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {Object.entries(profileTypes).map(([type, { description }]) => (
+                    <DataCard
+                      key={type}
+                      title={type.split(/(?=[A-Z])/).join(" ").replace(/^\w/, c => c.toUpperCase())}
+                      description={description}
+                      onSelect={() => setSelectedType(type as ProfileType)}
+                      isSelected={selectedType === type}
+                    />
+                  ))}
+                </div>
               </div>
-              <div>
-                <label className="text-sm font-medium mb-2 block">Age</label>
-                <Input
-                  type="number"
-                  placeholder="30"
-                  value={newProfile.age}
-                  onChange={(e) => setNewProfile({ ...newProfile, age: e.target.value })}
-                  className="glass"
-                  disabled={isAdding}
-                />
-              </div>
-              <div>
-                <label className="text-sm font-medium mb-2 block">File ID</label>
-                <Input
-                  placeholder={`details.txt`}
-                  value={newProfile.fileID}
-                  onChange={(e) => setNewProfile({ ...newProfile, fileID: e.target.value })}
-                  className="glass"
-                  disabled={isAdding}
-                />
+
+              <div className="space-y-4">
+                <h3 className="text-md font-medium">
+                  {selectedType.split(/(?=[A-Z])/).join(" ").replace(/^\w/, c => c.toUpperCase())} Fields
+                </h3>
+                {profileTypes[selectedType].fields.map((field) => (
+                  <div key={field.name}>
+                    <label className="text-sm font-medium mb-2 block">{field.label}</label>
+                    <Input
+                      type={field.type}
+                      placeholder={field.placeholder}
+                      value={newProfile[field.name] || ""}
+                      onChange={(e) => setNewProfile({
+                        ...newProfile,
+                        [field.name]: e.target.value
+                      })}
+                      className="glass"
+                      disabled={isAdding}
+                    />
+                  </div>
+                ))}
               </div>
             </CardContent>
             <CardFooter>
               <Button
                 className="w-full"
                 onClick={handleAddProfile}
-                disabled={isAdding || !newProfile.name || !newProfile.age || !newProfile.fileID}
+                disabled={isAdding || !isFormValid()}
               >
                 {isAdding ? (
                   <>
@@ -223,6 +325,7 @@ const Index = () => {
               </Button>
             </CardFooter>
           </Card>
+          
         </>
       )}
     </div>

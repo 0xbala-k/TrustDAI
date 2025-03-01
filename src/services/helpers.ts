@@ -70,10 +70,19 @@ export async function fetchUserFileIds(): Promise<string[]>{
   return userFileIds;
 }
 
-export async function addData(account: string, fileID: string, data: string): Promise<string> {
+export async function addProfile(
+  account: string,
+  fileID: string,
+  profileType: string,
+  profileData: string
+) {
+  addData(account,profileType,profileData.toString())
+}
+
+export async function addData(account: string, fileType: string, data: string): Promise<string> {
   // const profile = { name, age };
   // const profileJson = JSON.stringify(profile);
-  const key = `${account}-${fileID}`;
+  const key = `${account}-${fileType}`;
   const files = [
     {
       fileID: key,
