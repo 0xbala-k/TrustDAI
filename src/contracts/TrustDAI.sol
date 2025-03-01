@@ -14,6 +14,8 @@ contract TrustDAI {
     // Mapping from file CID to array of addresses that have access (for iteration)
     mapping(string => address[]) private fileAccessList;
 
+    address public storageContract;
+
     // Events to log operations
     event FileAdded(address indexed owner, string cid);
     event FileDeleted(address indexed owner, string cid);
@@ -36,6 +38,11 @@ contract TrustDAI {
             "Only file owner can perform this action."
         );
         _;
+    }
+
+    // Set storage contract address
+    constructor(address _storageContract) {
+        storageContract = _storageContract;
     }
 
     /// @notice Add a new file. Only the file owner is added to the access list.
@@ -90,6 +97,7 @@ contract TrustDAI {
         string memory cid,
         address requestor
     ) public view returns (bool) {
+        // require(fileOwner[cid] != address(0), "File doesn't exist.");
         if (fileOwner[cid] == address(0)) {
             return false;
         }
