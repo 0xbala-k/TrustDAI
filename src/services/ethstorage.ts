@@ -18,7 +18,7 @@ export async function uploadData(key: string, content: string): Promise<UploadDa
         key,
         content,
       }, {
-        timeout: 30000, // 10s timeout
+        timeout: 60000, // 10s timeout
       });
       return response.data;
     } catch (error: any) {
