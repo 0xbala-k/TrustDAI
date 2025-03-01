@@ -73,16 +73,14 @@ export async function fetchUserFileIds(): Promise<string[]>{
 
 export async function addProfile(
   account: string,
-  fileID: string,
   profileType: string,
   profileData: string
 ) {
-  addData(account,profileType,profileData.toString())
+  addData(account,profileType,profileData)
 }
 
 export async function addData(account: string, fileType: string, data: string): Promise<string> {
-  // const profile = { name, age };
-  // const profileJson = JSON.stringify(profile);
+
   const key = `${account}-${fileType}`;
   const files = [
     {
@@ -99,7 +97,7 @@ export async function addData(account: string, fileType: string, data: string): 
     const owner = await trustDAIContract.getOwner(file.fileID);
     if(owner==="0x0000000000000000000000000000000000000000"){
       await trustDAIContract.addFile(file.fileID)
-    }else if(owner!==account){
+    }else if(owner.toLowerCase()!==account.toLowerCase()){
       throw new Error("Error updating file. Only owner has permissions.");
     }
   })
@@ -164,12 +162,11 @@ export async function getFileData(account: string, fileID: string): Promise<stri
   const encryptedFiles = [];
   try{
     const encryptedData = await fetchData(key);
-    const data = encryptedData["data"]
 
     encryptedFiles.push({
       fileID: key,
-      cipherText: data["ciphertext"],
-      hash: data["dataToEncryptHash"]
+      cipherText: encryptedData["ciphertext"],
+      hash: encryptedData["dataToEncryptHash"]
     });
   } catch (error){
     console.log("Error fetching data from EthStorage: ",error)
@@ -179,7 +176,6 @@ export async function getFileData(account: string, fileID: string): Promise<stri
   const checkSumAddress = ethers.getAddress(signerAddress);
   const signer = await trustDAIContract.getSigner();
   
-
   // decrypt data
   const decryptedData =  await decryptData(encryptedFiles, checkSumAddress, signer)
 

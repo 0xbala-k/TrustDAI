@@ -3,6 +3,7 @@ import { LIT_NETWORK, LIT_ABILITY } from "@lit-protocol/constants";
 import { encryptString, decryptToString } from "@lit-protocol/encryption";
 import { createSiweMessageWithRecaps, generateAuthSig, LitAccessControlConditionResource } from "@lit-protocol/auth-helpers";
 import axios from "axios";
+import { ethers } from "ethers";
 
 // Replace these with your actual values or environment variable handling as needed
 const contractAddress = import.meta.env.VITE_CONTRACT_ADDRESS;
@@ -29,8 +30,12 @@ export class Lit {
   }
 
   async delegateCapacity(userAddress) {
+
+    const mintCredit = await axios.get(apiUrl+"mint-capacity-credits")
+
     const req = {
       userAddress: userAddress,
+      capacityTokenIdStr: mintCredit["data"]["capacityTokenIdStr"]
     };
 
     const resp = await axios.post(apiUrl + "delegate-capacity", req, {
@@ -38,8 +43,8 @@ export class Lit {
         "Content-Type": "application/json",
       },
     });
-    console.log("Resp: ", resp);
-    const capacityDelegationAuthSig  = resp["delegationAuthSig"];
+    console.log("RESP: ", resp["data"]["delegationAuthSig"]["capacityDelegationAuthSig"])
+    const capacityDelegationAuthSig  = resp["data"]["delegationAuthSig"]["capacityDelegationAuthSig"];
     return capacityDelegationAuthSig;
   }
 
@@ -93,7 +98,6 @@ export class Lit {
 
   async getSessionSignatures(capacityDelegationAuthSig, signer, signerAddress) {
     const latestBlockhash = await this.litNodeClient.getLatestBlockhash();
-
     const authNeededCallback = async (params) => {
       if (!params.uri) {
         throw new Error("uri is required");
@@ -116,7 +120,6 @@ export class Lit {
 
       const authSig = await generateAuthSig({
         signer: signer,
-        address: signerAddress,
         toSign,
       });
 
@@ -139,11 +142,15 @@ export class Lit {
     return sessionSigs;
   }
 
-  async decrypt(ciphertext, dataToEncryptHash, capacityDelegationAuthSig, fileID, signer, signerAddress) {
+  async decrypt(ciphertext, dataToEncryptHash, capacityDelegationAuthSig, fileID) {
+    const provider = new ethers.BrowserProvider(window.ethereum);
+    const signer = await provider.getSigner();
+    const walletAddress = await signer.getAddress();
+
     const sessionSigs = await this.getSessionSignatures(
       capacityDelegationAuthSig,
       signer,
-      signerAddress
+      walletAddress
     );
 
     const evmContractConditions = [
@@ -235,8 +242,7 @@ export async function decryptData(encryptedFiles, signerAddress, signer) {
       encryptedFile.hash,
       delegationAuthSig,
       encryptedFile.fileID,
-      signer,
-      signerAddress
+      signer
     );
     decryptedData.push(decryptedString);
   }

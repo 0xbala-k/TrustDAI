@@ -2,7 +2,7 @@
 import { ethers } from 'ethers';
 import TokenArtifact from "./Token.json";
 
-const tokenAddress = "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512";
+const tokenAddress = "0x5FbDB2315678afecb367f032d93F642f64180aa3";
 
 export class TokenContract {
   private provider: ethers.BrowserProvider;
@@ -15,7 +15,7 @@ export class TokenContract {
     this.provider = new ethers.BrowserProvider(window.ethereum);
   }
 
-  private async initializeContract() {
+  async initializeContract() {
     if (!this.contract) {
       const signer = await this.provider.getSigner();
       this.contract = new ethers.Contract(
@@ -55,23 +55,19 @@ export class TokenContract {
   }
 
   async getTokenData() {
-    const contract = await this.initializeContract();
-    const name = await contract.name();
-    const symbol = await contract.symbol();
+    const name = await this.contract.name();
+    const symbol = await this.contract.symbol();
     return { name, symbol };
   }
 
   async getBalance() {
     const [account] = await window.ethereum.request({ method: 'eth_accounts' });
-    const contract = await this.initializeContract();
-    const balance = await contract.balanceOf(account);
+    const balance = await this.contract.balanceOf(account);
     return balance.toString();
   }
 
   async transfer(to: string, amount: string) {
-    const [account] = await window.ethereum.request({ method: 'eth_accounts' });
-    const contract = await this.initializeContract();
-    const transaction = await contract.transfer(to, amount);
+    const transaction = await this.contract.transfer(to, amount);
     await transaction.wait();
     return transaction;
   }

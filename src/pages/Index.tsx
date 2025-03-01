@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { connectWallet, disconnectWallet, setupAccountChangeListener, addProfile, fetchUserFileIds } from "../services/helpers.ts";
+import { connectWallet, disconnectWallet, setupAccountChangeListener, addProfile, fetchUserFileIds, getFileData } from "../services/helpers.ts";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
@@ -213,7 +213,7 @@ const Index = () => {
       if (!account) throw new Error("No account connected");
       setIsAdding(true);
       
-      const fileID = await addProfile(account, `${selectedType}-${Date.now()}`, selectedType, validatedProfile);
+      const fileID = await addProfile(account, selectedType, JSON.stringify(validatedProfile));
       toast({ title: "Profile Added", description: `` });
       setNewProfile(profileTypes[selectedType].fields.reduce((acc, field) => ({
         ...acc,
@@ -336,6 +336,7 @@ const Index = () => {
                       <div key={i} className="border-b pb-2">
                         <p className="paragraph">
                           <span><strong>FileID:</strong> {fileID}</span>
+                          <Button onClick={async ()=>{console.log( await getFileData(account,fileID.split("-")[1]))}}>Get File</Button>
                         </p>
                       </div>
                     ))
