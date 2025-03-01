@@ -86,9 +86,15 @@ contract TrustDAI {
     /// @notice Check if the caller has access to a file.
     /// @param cid The IPFS CID of the file.
     /// @return True if the caller has access; otherwise, false.
-    function hasAccess(string memory cid) public view returns (bool) {
-        require(fileOwner[cid] != address(0), "File doesn't exist.");
-        return fileAccess[cid][msg.sender] || fileOwner[cid] == msg.sender;
+    function hasAccess(
+        string memory cid,
+        address requestor
+    ) public view returns (bool) {
+        if (fileOwner[cid] == address(0)) {
+            return false;
+        }
+
+        return fileAccess[cid][requestor];
     }
 
     /// @notice Delete a file (only the file owner can call this).
