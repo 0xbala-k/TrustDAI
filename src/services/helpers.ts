@@ -114,3 +114,37 @@ export async function deleteData(account: string, fileID: string): Promise<strin
 
   return fileID;
 }
+
+export async function grantAccess(account: string, fileID: string, address: string): Promise<string>{
+  const key = `${account}-${fileID}`;
+  try{
+    await trustDAIContract.grantAccess(key,address)
+  } catch(error){
+    throw new Error("Couldn't grant access, error: "+error)
+  }
+
+  return address;
+}
+
+export async function revokeAccess(account: string, fileID: string, address: string): Promise<string>{
+  const key = `${account}-${fileID}`;
+  try{
+    await trustDAIContract.revokeAccess(key,address)
+  } catch(error){
+    throw new Error("Couldn't revoke access, error: "+error)
+  }
+
+  return address;
+}
+
+export async function getAccessList(account: string, fileID: string): Promise<string[]>{
+  const key = `${account}-${fileID}`;
+  let accessList: string[] = [];
+  try{
+    accessList = await trustDAIContract.getAccessList(key)
+  } catch(error){
+    throw new Error("Couldn't get access list, error: "+error)
+  }
+
+  return accessList;
+}
