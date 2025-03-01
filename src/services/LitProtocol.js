@@ -7,6 +7,7 @@ import axios from "axios";
 // Replace these with your actual values or environment variable handling as needed
 const contractAddress = import.meta.env.VITE_CONTRACT_ADDRESS;
 const apiUrl = import.meta.env.VITE_API_ENDPOINT;
+const chainName = import.meta.env.VITE_CHAIN_NAME;
 
 export class Lit {
     litNodeClient;
@@ -72,7 +73,7 @@ export class Lit {
                   stateMutability: "view",
                   type: "function"
               },
-          chain: "sepolia",
+          chain: chainName,
           returnValueTest: {
             key: "",
             comparator: "=",
@@ -174,7 +175,7 @@ export class Lit {
           stateMutability: "view",
           type: "function"
         },
-        chain: "sepolia",
+        chain: chainName,
         returnValueTest: {
           key: "",
           comparator: "=",

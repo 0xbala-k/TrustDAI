@@ -8,6 +8,7 @@
 Use the deployed smart contract address and the helper sever api endpoint
 ```bash
 VITE_CONTRACT_ADDRESS = "0xd0EBaF6bAc19AA239853D94ec0FC0639F27eA986"
+VITE_CHAIN_NAME="sepolia"
 VITE_API_ENDPOINT="http://localhost:3000/"
 VITE_CLIENT_PRIV_KEY="kjdbsjbfladf....."
 VITE_CLIENT_SWA="skdjbfvjkdsv......."
