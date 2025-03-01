@@ -348,12 +348,12 @@ const Index = () => {
   };
 
   return (
-    // Outer container now uses full width
-    <div className="w-full max-w-screen-lg mx-auto p-6 space-y-8">
+    // Outer container with max-width, centering, background, and dark mode support
+    <div className="w-full max-w-screen-lg mx-auto p-6 space-y-8 bg-gray-50 dark:bg-gray-900 min-h-screen">
       {/* Header */}
       <div className="flex justify-between items-center">
         {account && (
-          <p className="text-sm text-muted-foreground font-mono">
+          <p className="text-sm text-muted-foreground font-mono dark:text-gray-300">
             Connected: {account.slice(0, 6)}...{account.slice(-4)}
           </p>
         )}
@@ -378,9 +378,9 @@ const Index = () => {
       {/* Main Content */}
       {account && (
         <>
-          <Card className="glass animate-fadeIn animation-delay-200 w-full">
+          <Card className="glass animate-fadeIn animation-delay-200 w-full bg-white dark:bg-gray-800 dark:shadow-md rounded-md">
             <CardHeader>
-              <CardTitle>Your Data</CardTitle>
+              <CardTitle className="dark:text-gray-100">Your Data</CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
               <div>
@@ -414,7 +414,7 @@ const Index = () => {
                 </div>
               </div>
               <div className="space-y-4">
-                <h3 className="text-md font-medium">
+                <h3 className="text-md font-medium dark:text-gray-200">
                   {selectedType
                     .split(/(?=[A-Z])/)
                     .join(" ")
@@ -423,7 +423,7 @@ const Index = () => {
                 </h3>
                 {profileTypes[selectedType].fields.map((field) => (
                   <div key={field.name}>
-                    <label className="text-sm font-medium mb-2 block">
+                    <label className="text-sm font-medium mb-2 block dark:text-gray-300">
                       {field.label}
                     </label>
                     <Input
@@ -455,21 +455,21 @@ const Index = () => {
                     Saving...
                   </>
                 ) : (
-                  "Add"
+                  "Add Profile"
                 )}
               </Button>
             </CardFooter>
             <CardFooter>
-              <Card className="glass animate-fadeIn w-full">
+              <Card className="glass animate-fadeIn w-full bg-white dark:bg-gray-800 dark:shadow-md rounded-md">
                 <CardContent className="space-y-4">
                   {isLoading ? (
                     <Loader2 className="h-6 w-6 animate-spin mx-auto" />
                   ) : userFilesIds.length === 0 ? (
-                    <p className="text-muted-foreground">No profiles found.</p>
+                    <p className="text-muted-foreground dark:text-gray-300">No profiles found.</p>
                   ) : (
                     userFilesIds.map((fileID, i) => (
                       <div key={i} className="border-b pb-2">
-                        <p className="paragraph">
+                        <p className="paragraph dark:text-gray-200">
                           <strong>FileID:</strong> {fileID}
                         </p>
                       </div>
@@ -491,9 +491,9 @@ const Index = () => {
             onClick={() => setIsAccessModalOpen(false)}
           ></div>
           {/* Modal Content */}
-          <Card className="z-10 glass max-w-md w-full">
+          <Card className="z-10 glass max-w-md w-full bg-white dark:bg-gray-800 dark:shadow-md rounded-md">
             <CardHeader>
-              <CardTitle>
+              <CardTitle className="dark:text-gray-100">
                 Manage Access -{" "}
                 {selectedAccessType &&
                   selectedAccessType
@@ -511,7 +511,7 @@ const Index = () => {
                     key={index}
                     className="flex items-center justify-between border-b pb-2"
                   >
-                    <span className="text-xs text-muted-foreground font-mono">
+                    <span className="text-xs text-muted-foreground font-mono dark:text-gray-300">
                       {address}
                     </span>
                     <Button
@@ -524,7 +524,7 @@ const Index = () => {
                   </div>
                 ))
               ) : (
-                <p className="text-muted-foreground">No access granted yet.</p>
+                <p className="text-muted-foreground dark:text-gray-300">No access granted yet.</p>
               )}
               <div className="flex space-x-2">
                 <Input
