@@ -206,6 +206,36 @@ const Index = () => {
     }
   };
 
+  const handleSelect = async (type: ProfileType) => {
+    // Update the selected profile type
+    setSelectedType(type);
+    try {
+      // Load the string data from your backend or service
+      const stringData = await getFileData(account, type);
+      
+      // Ensure we have some data before parsing
+      if (stringData) {
+        // Use the correct schema based on the passed type
+        const parsedData = profileTypes[type].schema.parse(JSON.parse(stringData));
+        
+        // Update the form state with the parsed data to populate the form
+        setNewProfile(parsedData);
+        
+        console.log("Parsed Data: ", parsedData);
+      } else {
+        // If no data is found, optionally clear or reset the form
+        const emptyFields = profileTypes[type].fields.reduce((acc, field) => {
+          acc[field.name] = "";
+          return acc;
+        }, {} as Record<string, string>);
+        setNewProfile(emptyFields);
+      }
+    } catch (error) {
+      console.error("Error loading profile data:", error);
+    }
+  };
+  
+
   const handleAddProfile = async () => {
     try {
       const schema = profileTypes[selectedType].schema;
@@ -272,14 +302,13 @@ const Index = () => {
             </CardHeader>
             <CardContent className="space-y-6">
               <div>
-                <h2 className="text-lg font-medium text-gray-900 mb-4">Profile Types</h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {Object.entries(profileTypes).map(([type, { description }]) => (
                     <DataCard
                       key={type}
                       title={type.split(/(?=[A-Z])/).join(" ").replace(/^\w/, c => c.toUpperCase())}
                       description={description}
-                      onSelect={() => setSelectedType(type as ProfileType)}
+                      onSelect={() => handleSelect(type as ProfileType)}
                       isSelected={selectedType === type}
                     />
                   ))}
@@ -336,7 +365,6 @@ const Index = () => {
                       <div key={i} className="border-b pb-2">
                         <p className="paragraph">
                           <span><strong>FileID:</strong> {fileID}</span>
-                          <Button onClick={async ()=>{console.log( await getFileData(account,fileID.split("-")[1]))}}>Get File</Button>
                         </p>
                       </div>
                     ))
