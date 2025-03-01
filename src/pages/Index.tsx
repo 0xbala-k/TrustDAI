@@ -160,15 +160,14 @@ const Index = () => {
   const [accessList, setAccessList] = useState<Record<ProfileType, string[]>>({});
   const [newAccess, setNewAccess] = useState("");
 
-  // Initialize accessList for each profile type on mount
+  // Initialize accessList for each profile type on mount when account is available
   useEffect(() => {
-    if(!account) return;
+    if (!account) return;
     const initialAccess: Record<ProfileType, string[]> = {} as Record<ProfileType, string[]>;
     (Object.keys(profileTypes) as ProfileType[]).forEach(async (type) => {
-      const addresses = await getAccessList(account,type)
+      const addresses = await getAccessList(account, type);
       initialAccess[type] = addresses;
     });
-    console.log("initialAccess: ",initialAccess)
     setAccessList(initialAccess);
   }, [account]);
 
@@ -181,7 +180,7 @@ const Index = () => {
     setNewProfile(initialFields);
   }, [selectedType]);
 
-  // Wallet Connection Handlers (unchanged)
+  // Wallet Connection Handlers
   const handleConnect = async () => {
     try {
       const account = await connectWallet();
@@ -216,7 +215,6 @@ const Index = () => {
 
   useEffect(() => {
     if (!account) return;
-
     const cleanup = setupAccountChangeListener((accounts) => {
       if (accounts.length > 0) {
         setAccount(accounts[0]);
@@ -228,7 +226,6 @@ const Index = () => {
         handleDisconnect();
       }
     });
-
     return cleanup;
   }, [account]);
 
@@ -261,7 +258,6 @@ const Index = () => {
         const parsedData = profileTypes[type].schema.parse(JSON.parse(stringData));
         // Populate the form with the loaded data
         setNewProfile(parsedData);
-        console.log("Parsed Data: ", parsedData);
       } else {
         // If no data found, reset form fields for the type
         const emptyFields = profileTypes[type].fields.reduce((acc, field) => {
@@ -281,13 +277,12 @@ const Index = () => {
       const validatedProfile = schema.parse(newProfile);
       if (!account) throw new Error("No account connected");
       setIsAdding(true);
-
       const fileID = await addProfile(
         account,
         selectedType,
         JSON.stringify(validatedProfile)
       );
-      toast({ title: "Profile Added", description: `` });
+      toast({ title: "Profile Added", description: "" });
       setNewProfile(
         profileTypes[selectedType].fields.reduce((acc, field) => {
           acc[field.name] = "";
@@ -323,13 +318,12 @@ const Index = () => {
   const handleAddAccess = async () => {
     if (!selectedAccessType) return;
     if (newAccess.trim() === "") return;
-    try{
-      const tx = await grantAccess(account,selectedAccessType,newAccess);
+    try {
+      const tx = await grantAccess(account, selectedAccessType, newAccess);
       console.log(tx);
-    }catch(error){
-      console.log("Error granting access. Error: ",error)
+    } catch (error) {
+      console.error("Error granting access:", error);
     }
-
     setAccessList((prev) => ({
       ...prev,
       [selectedAccessType]: [...(prev[selectedAccessType] || []), newAccess.trim()],
@@ -339,13 +333,12 @@ const Index = () => {
 
   const handleRemoveAccess = async (address: string) => {
     if (!selectedAccessType) return;
-    try{
-      const tx = await revokeAccess(account,selectedAccessType,address);
+    try {
+      const tx = await revokeAccess(account, selectedAccessType, address);
       console.log(tx);
-    }catch(error){
-      console.log("Error granting access. Error: ",error)
+    } catch (error) {
+      console.error("Error revoking access:", error);
     }
-
     setAccessList((prev) => ({
       ...prev,
       [selectedAccessType]: prev[selectedAccessType].filter(
@@ -355,7 +348,9 @@ const Index = () => {
   };
 
   return (
-    <div className="container max-w-2xl mx-auto p-6 space-y-8">
+    // Outer container now uses full width
+    <div className="w-full max-w-screen-lg mx-auto p-6 space-y-8">
+      {/* Header */}
       <div className="flex justify-between items-center">
         {account && (
           <p className="text-sm text-muted-foreground font-mono">
@@ -380,9 +375,10 @@ const Index = () => {
         </div>
       </div>
 
+      {/* Main Content */}
       {account && (
         <>
-          <Card className="glass animate-fadeIn animation-delay-200">
+          <Card className="glass animate-fadeIn animation-delay-200 w-full">
             <CardHeader>
               <CardTitle>Your Data</CardTitle>
             </CardHeader>
@@ -391,7 +387,7 @@ const Index = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {(Object.entries(profileTypes) as [ProfileType, typeof profileTypes[ProfileType]][]).map(
                     ([type, { description }]) => (
-                      <div key={type} className="space-y-2">
+                      <div key={type} className="flex flex-col gap-2">
                         <DataCard
                           title={type
                             .split(/(?=[A-Z])/)
@@ -417,7 +413,6 @@ const Index = () => {
                   )}
                 </div>
               </div>
-
               <div className="space-y-4">
                 <h3 className="text-md font-medium">
                   {selectedType
@@ -460,12 +455,12 @@ const Index = () => {
                     Saving...
                   </>
                 ) : (
-                  "Add Profile"
+                  "Add"
                 )}
               </Button>
             </CardFooter>
             <CardFooter>
-              <Card className="glass animate-fadeIn">
+              <Card className="glass animate-fadeIn w-full">
                 <CardContent className="space-y-4">
                   {isLoading ? (
                     <Loader2 className="h-6 w-6 animate-spin mx-auto" />
@@ -475,9 +470,7 @@ const Index = () => {
                     userFilesIds.map((fileID, i) => (
                       <div key={i} className="border-b pb-2">
                         <p className="paragraph">
-                          <span>
-                            <strong>FileID:</strong> {fileID}
-                          </span>
+                          <strong>FileID:</strong> {fileID}
                         </p>
                       </div>
                     ))
@@ -510,13 +503,17 @@ const Index = () => {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {selectedAccessType && accessList[selectedAccessType] && accessList[selectedAccessType].length > 0 ? (
+              {selectedAccessType &&
+              accessList[selectedAccessType] &&
+              accessList[selectedAccessType].length > 0 ? (
                 accessList[selectedAccessType].map((address, index) => (
                   <div
                     key={index}
                     className="flex items-center justify-between border-b pb-2"
                   >
-                    <span className="text-xs text-muted-foreground font-mono">{address}</span>
+                    <span className="text-xs text-muted-foreground font-mono">
+                      {address}
+                    </span>
                     <Button
                       variant="destructive"
                       size="sm"
