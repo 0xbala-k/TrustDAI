@@ -1,5 +1,6 @@
 import { trustDAIContract } from "./TrustDAI.ts";
 import { uploadData, fetchData } from "./ethstorage.ts";
+import { encryptData, decryptData } from "./LitProtocol.js";
 
 // Hardcoded TrustDAI contract address
 const TRUSTDAI_CONTRACT_ADDRESS = import.meta.env.VITE_CONTRACT_ADDRESS || "0xd0EBaF6bAc19AA239853D94ec0FC0639F27eA986"; // Replace with your deployed address
@@ -64,11 +65,34 @@ export async function fetchProfiles(): Promise<Profile[]> {
   return profiles.filter((p): p is Profile => p !== null);
 }
 
-export async function addProfile(account: string, name: string, age: string): Promise<string> {
+export async function fetchUserFileIds(): Promise<string[]>{
+  const userFileIds = await trustDAIContract.getUserFiles();
+  return userFileIds;
+}
+
+export async function addProfile(account: string, fileID: string,name: string, age: string): Promise<string> {
   const profile = { name, age };
   const profileJson = JSON.stringify(profile);
-  const fileID = `${account}-${Date.now()}`;
-  await uploadData(fileID, profileJson);
-  await trustDAIContract.addFile(fileID);
+  const key = `${account}-${fileID}`;
+  const files = [
+    {
+      fileID: key,
+      data: profileJson,
+    }
+  ]; 
+
+  // encrypt using Lit network
+  const encryptedData = await encryptData(files);
+
+  // upload to ethStorage
+  for (let i = 0; i < files.length; i++) {
+    await uploadData(files[i].fileID,encryptedData[i])
+  }
+
+  // update contract
+  files.forEach(async function(file){
+    await trustDAIContract.addFile(file.fileID)
+  })
+
   return fileID;
 }

@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { connectWallet, disconnectWallet, setupAccountChangeListener, fetchProfiles, addProfile } from "../services/helpers.ts";
+import { connectWallet, disconnectWallet, setupAccountChangeListener, addProfile, fetchUserFileIds } from "../services/helpers.ts";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
@@ -22,11 +21,11 @@ const profileSchema = z.object({
 
 const Index = () => {
   const [account, setAccount] = useState<string | null>(null);
-  const [profiles, setProfiles] = useState<Profile[]>([]);
   const [newProfile, setNewProfile] = useState({ name: "", age: "", fileID: "" });
+  const [userFilesIds, setUserFilesIds] = useState<string[]>([]);
   const [isAdding, setIsAdding] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
-  const queryClient = useQueryClient();
   const { theme, setTheme } = useTheme();
 
   // Wallet Connection Handlers
@@ -34,7 +33,6 @@ const Index = () => {
     try {
       const account = await connectWallet();
       setAccount(account);
-      setNewProfile((prev) => ({ ...prev, fileID: `${account}-${Date.now()}` })); // Set default fileID
       toast({ title: "Wallet Connected", description: `Connected to ${account.slice(0, 6)}...${account.slice(-4)}` });
     } catch (error: any) {
       toast({ title: "Connection Failed", description: error.message, variant: "destructive" });
@@ -45,8 +43,7 @@ const Index = () => {
     try {
       await disconnectWallet();
       setAccount(null);
-      setProfiles([]);
-      setNewProfile({ name: "", age: "", fileID: "" });
+      setUserFilesIds([]);
       toast({ title: "Wallet Disconnected" });
     } catch (error: any) {
       toast({ title: "Disconnect Failed", description: error.message, variant: "destructive" });
@@ -57,11 +54,9 @@ const Index = () => {
   useEffect(() => {
     if (!account) return; // Only setup listener after manual connection
 
-    const cleanup = setupAccountChangeListener((accounts) => {
+    const cleanup = setupAccountChangeListener( (accounts) => {
       if (accounts.length > 0) {
         setAccount(accounts[0]);
-        setNewProfile((prev) => ({ ...prev, fileID: `${accounts[0]}-${Date.now()}` }));
-        queryClient.invalidateQueries({ queryKey: ["profiles"] });
         toast({
           title: "Account Changed",
           description: `Switched to ${accounts[0].slice(0, 6)}...${accounts[0].slice(-4)}`,
@@ -72,23 +67,29 @@ const Index = () => {
     });
 
     return cleanup;
-  }, [account, queryClient, toast]);
+  }, [account, toast]);
 
-  // Fetch Profiles
-  const { data: profilesData, isLoading } = useQuery({
-    queryKey: ["profiles", account],
-    queryFn: fetchProfiles,
-    enabled: !!account,
-    retry: 0,
-    retryDelay: (attempt) => attempt * 10000,
-    onError: (error: any) => {
-      toast({ title: "Fetch Failed", description: error.message, variant: "destructive" });
-    },
-  });
 
-  useEffect(() => {
-    if (profilesData) setProfiles(profilesData);
-  }, [profilesData]);
+  useEffect(()=>{
+    if(account){
+      // fetch user file Ids
+      handleFetchUserFileIds();
+    }
+  }, [account]);
+
+  const handleFetchUserFileIds = async () => {
+    if (!isLoading) {
+      setIsLoading(true);
+      try {
+        const userFiles = await fetchUserFileIds();
+        setUserFilesIds(userFiles);
+      } catch (error) {
+        console.error("Fetch failed", error);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+  }
 
   // Add Profile with Editable fileID
   const handleAddProfile = async () => {
@@ -96,10 +97,9 @@ const Index = () => {
       const validatedProfile = profileSchema.parse(newProfile);
       if (!account) throw new Error("No account connected");
       setIsAdding(true);
-      const fileID = await addProfile(account, validatedProfile.name, validatedProfile.age.toString());
+      const fileID = await addProfile(account, validatedProfile.fileID,  validatedProfile.name, validatedProfile.age.toString());
       toast({ title: "Profile Added", description: `ID: ${fileID}` });
-      setNewProfile({ name: "", age: "", fileID: `${account}-${Date.now()}` });
-      queryClient.invalidateQueries({ queryKey: ["profiles", account] });
+      setNewProfile({ name: "", age: "", fileID: "" });
     } catch (error: any) {
       let errorMessage = error.message;
       if (error.code === 4001 || error.message.includes("user rejected")) {
@@ -147,7 +147,7 @@ const Index = () => {
             <CardHeader>
               <Button
                 variant="outline"
-                onClick={() => queryClient.invalidateQueries({ queryKey: ["profiles", account] })}
+                onClick={() => handleFetchUserFileIds()}
                 className="glass mb-2"
               >
                 Refresh Profiles
@@ -157,13 +157,12 @@ const Index = () => {
             <CardContent className="space-y-4">
               {isLoading ? (
                 <Loader2 className="h-6 w-6 animate-spin mx-auto" />
-              ) : profiles.length === 0 ? (
+              ) : userFilesIds.length === 0 ? (
                 <p className="text-muted-foreground">No profiles found.</p>
               ) : (
-                profiles.map((profile, i) => (
+                userFilesIds.map((fileID, i) => (
                   <div key={i} className="border-b pb-2">
-                    <p><strong>Name:</strong> {profile.name || "N/A"}</p>
-                    <p><strong>Age:</strong> {profile.age || "N/A"}</p>
+                    <p><strong>FileID:</strong> {fileID.split('-')[1] || "N/A"}</p>
                   </div>
                 ))
               )}
@@ -199,7 +198,7 @@ const Index = () => {
               <div>
                 <label className="text-sm font-medium mb-2 block">File ID</label>
                 <Input
-                  placeholder={`${account}-${Date.now()}`}
+                  placeholder={`details.txt`}
                   value={newProfile.fileID}
                   onChange={(e) => setNewProfile({ ...newProfile, fileID: e.target.value })}
                   className="glass"
