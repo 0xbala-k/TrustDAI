@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { connectWallet, disconnectWallet, getCurrentAccount, setupAccountChangeListener, fetchProfiles, addProfile } from "../services/helpers.ts";
+import { connectWallet, disconnectWallet, setupAccountChangeListener, fetchProfiles, addProfile } from "../services/helpers.ts";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
@@ -17,12 +17,13 @@ interface Profile {
 const profileSchema = z.object({
   name: z.string().min(1, "Name is required").max(50, "Name too long"),
   age: z.string().regex(/^\d+$/, "Age must be a number").transform(Number),
+  fileID: z.string().min(1, "File ID is required"),
 });
 
 const Index = () => {
   const [account, setAccount] = useState<string | null>(null);
   const [profiles, setProfiles] = useState<Profile[]>([]);
-  const [newProfile, setNewProfile] = useState<Profile>({ name: "", age: "" });
+  const [newProfile, setNewProfile] = useState({ name: "", age: "", fileID: "" });
   const [isAdding, setIsAdding] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -33,6 +34,7 @@ const Index = () => {
     try {
       const account = await connectWallet();
       setAccount(account);
+      setNewProfile((prev) => ({ ...prev, fileID: `${account}-${Date.now()}` })); // Set default fileID
       toast({ title: "Wallet Connected", description: `Connected to ${account.slice(0, 6)}...${account.slice(-4)}` });
     } catch (error: any) {
       toast({ title: "Connection Failed", description: error.message, variant: "destructive" });
@@ -44,24 +46,21 @@ const Index = () => {
       await disconnectWallet();
       setAccount(null);
       setProfiles([]);
+      setNewProfile({ name: "", age: "", fileID: "" });
       toast({ title: "Wallet Disconnected" });
     } catch (error: any) {
       toast({ title: "Disconnect Failed", description: error.message, variant: "destructive" });
     }
   };
 
-  // Account Change Listener
+  // Account Change Listener (only after connect)
   useEffect(() => {
-    const checkConnection = async () => {
-      const currentAccount = await getCurrentAccount();
-      if (currentAccount) setAccount(currentAccount);
-    };
-
-    checkConnection();
+    if (!account) return; // Only setup listener after manual connection
 
     const cleanup = setupAccountChangeListener((accounts) => {
       if (accounts.length > 0) {
         setAccount(accounts[0]);
+        setNewProfile((prev) => ({ ...prev, fileID: `${accounts[0]}-${Date.now()}` }));
         queryClient.invalidateQueries({ queryKey: ["profiles"] });
         toast({
           title: "Account Changed",
@@ -73,15 +72,15 @@ const Index = () => {
     });
 
     return cleanup;
-  }, [queryClient, toast]);
+  }, [account, queryClient, toast]);
 
   // Fetch Profiles
   const { data: profilesData, isLoading } = useQuery({
     queryKey: ["profiles", account],
     queryFn: fetchProfiles,
     enabled: !!account,
-    retry: 3,
-    retryDelay: (attempt) => attempt * 1000,
+    retry: 0,
+    retryDelay: (attempt) => attempt * 10000,
     onError: (error: any) => {
       toast({ title: "Fetch Failed", description: error.message, variant: "destructive" });
     },
@@ -91,7 +90,7 @@ const Index = () => {
     if (profilesData) setProfiles(profilesData);
   }, [profilesData]);
 
-  // Add Profile
+  // Add Profile with Editable fileID
   const handleAddProfile = async () => {
     try {
       const validatedProfile = profileSchema.parse(newProfile);
@@ -99,10 +98,14 @@ const Index = () => {
       setIsAdding(true);
       const fileID = await addProfile(account, validatedProfile.name, validatedProfile.age.toString());
       toast({ title: "Profile Added", description: `ID: ${fileID}` });
-      setNewProfile({ name: "", age: "" });
+      setNewProfile({ name: "", age: "", fileID: `${account}-${Date.now()}` });
       queryClient.invalidateQueries({ queryKey: ["profiles", account] });
     } catch (error: any) {
-      toast({ title: "Failed to Add Profile", description: error.message || "Invalid input", variant: "destructive" });
+      let errorMessage = error.message;
+      if (error.code === 4001 || error.message.includes("user rejected")) {
+        errorMessage = "You rejected the transaction. Please approve the gas fee to add your profile.";
+      }
+      toast({ title: "Failed to Add Profile", description: errorMessage, variant: "destructive" });
     } finally {
       setIsAdding(false);
     }
@@ -193,12 +196,22 @@ const Index = () => {
                   disabled={isAdding}
                 />
               </div>
+              <div>
+                <label className="text-sm font-medium mb-2 block">File ID</label>
+                <Input
+                  placeholder={`${account}-${Date.now()}`}
+                  value={newProfile.fileID}
+                  onChange={(e) => setNewProfile({ ...newProfile, fileID: e.target.value })}
+                  className="glass"
+                  disabled={isAdding}
+                />
+              </div>
             </CardContent>
             <CardFooter>
               <Button
                 className="w-full"
                 onClick={handleAddProfile}
-                disabled={isAdding || !newProfile.name || !newProfile.age}
+                disabled={isAdding || !newProfile.name || !newProfile.age || !newProfile.fileID}
               >
                 {isAdding ? (
                   <>
