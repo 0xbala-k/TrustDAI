@@ -214,7 +214,7 @@ const Index = () => {
       setIsAdding(true);
       
       const fileID = await addProfile(account, `${selectedType}-${Date.now()}`, selectedType, validatedProfile);
-      toast({ title: "Profile Added", description: `ID: ${fileID}` });
+      toast({ title: "Profile Added", description: `` });
       setNewProfile(profileTypes[selectedType].fields.reduce((acc, field) => ({
         ...acc,
         [field.name]: ""
@@ -323,6 +323,25 @@ const Index = () => {
                   "Add Profile"
                 )}
               </Button>
+            </CardFooter>
+            <CardFooter>
+              <Card className="glass animate-fadeIn">
+                <CardContent className="space-y-4">
+                  {isLoading ? (
+                    <Loader2 className="h-6 w-6 animate-spin mx-auto" />
+                  ) : userFilesIds.length === 0 ? (
+                    <p className="text-muted-foreground">No profiles found.</p>
+                  ) : (
+                    userFilesIds.map((fileID, i) => (
+                      <div key={i} className="border-b pb-2">
+                        <p className="paragraph">
+                          <span><strong>FileID:</strong> {fileID}</span>
+                        </p>
+                      </div>
+                    ))
+                  )}
+                </CardContent>
+              </Card>
             </CardFooter>
           </Card>
           
