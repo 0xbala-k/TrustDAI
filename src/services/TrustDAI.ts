@@ -58,6 +58,12 @@ export class TrustDAIContract {
     return await this.contract.getUserFiles(account);
   }
 
+  async getOwner(fileID: string) {
+    if (!this.contract) throw new Error("Contract not initialized");
+    const owner = await this.contract.fileOwner(fileID);
+    return owner;
+  }
+
   async getAccessList(fileID: string) {
     if (!this.contract) throw new Error("Contract not initialized");
     const accessList = await this.contract.getAccessList(fileID);

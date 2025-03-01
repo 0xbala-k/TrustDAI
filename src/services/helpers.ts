@@ -70,29 +70,47 @@ export async function fetchUserFileIds(): Promise<string[]>{
   return userFileIds;
 }
 
-export async function addProfile(account: string, fileID: string,name: string, age: string): Promise<string> {
-  const profile = { name, age };
-  const profileJson = JSON.stringify(profile);
+export async function addData(account: string, fileID: string, data: string): Promise<string> {
+  // const profile = { name, age };
+  // const profileJson = JSON.stringify(profile);
   const key = `${account}-${fileID}`;
   const files = [
     {
       fileID: key,
-      data: profileJson,
+      data: data,
     }
   ]; 
 
   // encrypt using Lit network
   const encryptedData = await encryptData(files);
 
+  // update contract
+  files.forEach(async function(file){
+    const owner = await trustDAIContract.getOwner(file.fileID);
+    if(owner==="0x0000000000000000000000000000000000000000"){
+      await trustDAIContract.addFile(file.fileID)
+    }else if(owner!==account){
+      throw new Error("Error updating file. Only owner has permissions.");
+    }
+  })
+
   // upload to ethStorage
   for (let i = 0; i < files.length; i++) {
     await uploadData(files[i].fileID,encryptedData[i])
   }
 
-  // update contract
-  files.forEach(async function(file){
-    await trustDAIContract.addFile(file.fileID)
-  })
+  return fileID;
+}
+
+export async function deleteData(account: string, fileID: string): Promise<string> {
+  const key = `${account}-${fileID}`;
+  try{
+    await trustDAIContract.deleteFile(key)
+  } catch(error){
+    throw new Error("Couldn't delete file, error: "+error)
+  }
+  
+  await uploadData(key,"File deleted.")
 
   return fileID;
 }
